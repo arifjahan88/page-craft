@@ -1,7 +1,7 @@
 {
-  "name": "PDF Reader",
-  "short_name": "PDF Reader",
-  "description": "Fast, minimal, distraction-free PDF reader",
+  "name": "PageCraft",
+  "short_name": "PageCraft",
+  "description": "PageCraft - Fast, minimal, distraction-free PDF reader",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0a0a0c",

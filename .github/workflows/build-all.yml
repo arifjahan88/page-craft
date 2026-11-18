@@ -1,4 +1,4 @@
-name: Tauri Desktop Release
+name: PageCraft Desktop Release
 
 on:
   push:
@@ -90,9 +90,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: ${{ github.ref_name }}
-          releaseName: "Desktop Application ${{ github.ref_name }}"
+          releaseName: "PageCraft ${{ github.ref_name }}"
           releaseBody: |
-            ## Desktop Application Release
+            ## PageCraft Desktop Release
 
             Download the installer for your operating system.
 

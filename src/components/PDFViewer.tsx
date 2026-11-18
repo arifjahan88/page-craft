@@ -697,12 +697,12 @@ function EmptyState({
         <div className={styles.emptyIcon}>
           <img
             src="/favicon.svg"
-            alt="PDF Reader"
+            alt="PageCraft"
             className={styles.emptyIconImg}
             draggable={false}
           />
         </div>
-        <h2 className={styles.emptyTitle}>PDF Reader</h2>
+        <h2 className={styles.emptyTitle}>PageCraft</h2>
         <p className={styles.emptySubtitle}>Fast, minimal, distraction-free</p>
         <button className={styles.emptyBtn} onClick={onOpenFile}>
           <FolderOpen size={15} strokeWidth={2.2} />

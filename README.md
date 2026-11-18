@@ -1,8 +1,9 @@
 <p align="center">
-  <img src="assets/banner.png" alt="PDF Reader - Modern Desktop & Web PDF Reader" width="100%" />
+  <img src="assets/banner.png" alt="PageCraft - Modern Desktop & Web PDF Reader" width="100%" />
 </p>
 
 <p align="center">
+  <a href="#-building-for-distribution"><img src="https://img.shields.io/badge/Release-v1.0.0-blueviolet?style=flat-square" alt="Version 1.0.0" /></a>
   <a href="https://tauri.app"><img src="https://img.shields.io/badge/Tauri-v2.0-24C8D8?style=flat-square&logo=tauri&logoColor=white" alt="Tauri v2" /></a>
   <a href="https://react.dev"><img src="https://img.shields.io/badge/React-18.3-61DAFB?style=flat-square&logo=react&logoColor=black" alt="React 18" /></a>
   <a href="https://www.typescriptlang.org"><img src="https://img.shields.io/badge/TypeScript-5.5-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript" /></a>
@@ -12,7 +13,7 @@
 </p>
 
 <p align="center">
-  <strong>PDF Reader</strong> is an ultra-fast, minimal, and beautiful document reader built with <strong>Tauri v2</strong>, <strong>React 18</strong>, and <strong>PDF.js</strong>.<br />
+  <strong>PageCraft</strong> is an ultra-fast, minimal, and beautiful document reader built with <strong>Tauri v2</strong>, <strong>React 18</strong>, and <strong>PDF.js</strong>.<br />
   Engineered for distraction-free reading with smooth continuous scrolling, multi-tab workflows, in-app vector printing, and page-to-image extraction.
 </p>
 
@@ -106,8 +107,8 @@
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/your-username/pdf-reader.git
-cd pdf-reader
+git clone https://github.com/your-username/pagecraft.git
+cd pagecraft
 
 # 2. Install dependencies
 npm install
@@ -166,12 +167,12 @@ npm run build:linux
 
 | Platform | Package Format | Output Path |
 | :--- | :--- | :--- |
-| **macOS** | `.app` Bundle | `src-tauri/target/release/bundle/macos/PDF Reader.app` |
-| **macOS** | `.dmg` Installer | `src-tauri/target/release/bundle/dmg/PDF Reader_1.2.2_aarch64.dmg` |
-| **Windows** | `.exe` Setup | `src-tauri/target/release/bundle/nsis/PDF Reader_1.2.2_x64-setup.exe` |
-| **Windows** | `.msi` Package | `src-tauri/target/release/bundle/msi/PDF Reader_1.2.2_x64_en-US.msi` |
-| **Linux** | `.AppImage` | `src-tauri/target/release/bundle/appimage/pdf-reader_1.2.2_amd64.AppImage` |
-| **Linux** | `.deb` Package | `src-tauri/target/release/bundle/deb/pdf-reader_1.2.2_amd64.deb` |
+| **macOS** | `.app` Bundle | `src-tauri/target/release/bundle/macos/PageCraft.app` |
+| **macOS** | `.dmg` Installer | `src-tauri/target/release/bundle/dmg/PageCraft_1.0.0_aarch64.dmg` |
+| **Windows** | `.exe` Setup | `src-tauri/target/release/bundle/nsis/PageCraft_1.0.0_x64-setup.exe` |
+| **Windows** | `.msi` Package | `src-tauri/target/release/bundle/msi/PageCraft_1.0.0_x64_en-US.msi` |
+| **Linux** | `.AppImage` | `src-tauri/target/release/bundle/appimage/pagecraft_1.0.0_amd64.AppImage` |
+| **Linux** | `.deb` Package | `src-tauri/target/release/bundle/deb/pagecraft_1.0.0_amd64.deb` |
 
 ---
 
@@ -179,7 +180,7 @@ npm run build:linux
 
 A pre-configured GitHub Actions workflow is included at [`.github/workflows/build-all.yml`](.github/workflows/build-all.yml). 
 
-Whenever you push a git tag (e.g., `v1.2.2`) or manually trigger the workflow from the **Actions** tab on GitHub:
+Whenever you push a git tag (e.g., `v1.0.0`) or manually trigger the workflow from the **Actions** tab on GitHub:
 1. Matrix runners spin up on **macOS**, **Windows**, and **Ubuntu**.
 2. Each platform compiles native GUI toolkits and packages installers simultaneously.
 3. Automatically drafts a GitHub Release containing all `.dmg`, `.exe`, `.msi`, `.AppImage`, and `.deb` binaries ready for download.
@@ -189,7 +190,7 @@ Whenever you push a git tag (e.g., `v1.2.2`) or manually trigger the workflow fr
 ## 🏛️ Architecture & Project Structure
 
 ```
-pdf-reader/
+pagecraft/
 ├── .github/
 │   └── workflows/
 │       └── build-all.yml           # Multi-platform CI/CD release workflow

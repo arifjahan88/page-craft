@@ -2,7 +2,7 @@ import { execSync } from "child_process";
 import os from "os";
 
 console.log("\n==========================================");
-console.log("   PDF Reader - Desktop App Builder");
+console.log("   PageCraft - Desktop App Builder");
 console.log("==========================================\n");
 
 const platform = os.platform();
@@ -13,8 +13,8 @@ if (platform === "darwin") {
     execSync("npx tauri build", { stdio: "inherit" });
     console.log("\n✅ macOS build completed successfully!");
     console.log("📂 Output location:");
-    console.log("   • .app: src-tauri/target/release/bundle/macos/PDF Reader.app");
-    console.log("   • .dmg: src-tauri/target/release/bundle/dmg/PDF Reader_1.2.2_aarch64.dmg\n");
+    console.log("   • .app: src-tauri/target/release/bundle/macos/PageCraft.app");
+    console.log("   • .dmg: src-tauri/target/release/bundle/dmg/PageCraft_1.0.0_aarch64.dmg\n");
   } catch (err) {
     console.error("\n❌ macOS build failed:", err.message);
     process.exit(1);
