@@ -9,13 +9,14 @@ import { TabBar } from "./components/TabBar";
 import { PDFViewer } from "./components/PDFViewer";
 import { StatusBar } from "./components/StatusBar";
 import { ExtractionProgressModal } from "./components/ExtractionProgressModal";
+import { PrintProgressModal } from "./components/PrintProgressModal";
 import {
   savePDFBuffer,
   getPDFBuffer,
   deletePDFBuffer,
   clearAllPDFBuffers,
 } from "./utils/pdfStorage";
-import { printPDFBuffer } from "./utils/pdfPrinter";
+import { printPDF, type PrintProgress } from "./utils/pdfPrinter";
 import {
   extractPDFPagesAsZip,
   type ImageFormat,
@@ -25,8 +26,7 @@ import styles from "./App.module.css";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const IS_TAURI =
-  typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+const IS_TAURI = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -39,24 +39,27 @@ function base64ToBuffer(base64: string): ArrayBuffer {
 
 // ─── App ──────────────────────────────────────────────────────────────────────
 
-function PDFApp({ initialFilePath }: { initialFilePath: string | null }) {
+interface PDFAppProps {
+  initialFiles?: string[];
+  initialFilePath?: string | null;
+}
+
+function PDFApp({ initialFiles, initialFilePath }: PDFAppProps) {
   // ── Refs ───────────────────────────────────────────────────────────────────
-  const canvasRef = useRef<HTMLCanvasElement>(
-    null,
-  ) as React.RefObject<HTMLCanvasElement>;
-  const textLayerRef = useRef<HTMLDivElement>(
-    null,
-  ) as React.RefObject<HTMLDivElement>;
+  const canvasRef = useRef<HTMLCanvasElement>(null) as React.RefObject<HTMLCanvasElement>;
+  const textLayerRef = useRef<HTMLDivElement>(null) as React.RefObject<HTMLDivElement>;
   const containerRef = useRef<HTMLDivElement>(null);
   const switchingRef = useRef(false); // prevents stale page/zoom writes during tab switch
 
   // ── State ──────────────────────────────────────────────────────────────────
-  // true while the initial double-click file is loading — keeps spinner visible
-  const [pendingFile, setPendingFile] = useState(initialFilePath !== null);
+  // true while the initial files are loading — keeps spinner visible
+  const hasInitialFiles = (initialFiles && initialFiles.length > 0) || Boolean(initialFilePath);
+  const [pendingFile, setPendingFile] = useState(hasInitialFiles);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
-  const [extractionProgress, setExtractionProgress] =
-    useState<ExtractionProgress | null>(null);
+  const [extractionProgress, setExtractionProgress] = useState<ExtractionProgress | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const [printProgress, setPrintProgress] = useState<PrintProgress | null>(null);
+  const printAbortControllerRef = useRef<AbortController | null>(null);
 
   // ── Hooks ──────────────────────────────────────────────────────────────────
   const {
@@ -82,22 +85,8 @@ function PDFApp({ initialFilePath }: { initialFilePath: string | null }) {
     goToPrevMatch,
   } = usePDF(canvasRef, textLayerRef);
 
-  const {
-    recents,
-    addRecent,
-    updateRecentPage,
-    removeRecent,
-    clearAllRecents,
-  } = useRecents();
-  const {
-    tabs,
-    activeId,
-    openTab,
-    activateTab,
-    closeTab,
-    closeAllTabs,
-    saveTabState,
-  } = useTabs();
+  const { recents, addRecent, updateRecentPage, removeRecent, clearAllRecents } = useRecents();
+  const { tabs, activeId, openTab, activateTab, closeTab, closeAllTabs, saveTabState } = useTabs();
 
   // ── Go Home: close all open files/tabs and return to home screen ─────────
   const handleGoHome = useCallback(async () => {
@@ -112,12 +101,36 @@ function PDFApp({ initialFilePath }: { initialFilePath: string | null }) {
   }, [clearAllRecents]);
 
   // ── Print active PDF buffer ──────────────────────────────────────────────
-  const handlePrint = useCallback(() => {
+  const handlePrint = useCallback(async () => {
     const activeTab = tabs.find((t) => t.id === activeId);
-    if (activeTab?.buffer) {
-      printPDFBuffer(activeTab.buffer, activeTab.filePath);
+    if (!activeTab?.buffer) return;
+
+    printAbortControllerRef.current?.abort();
+    const controller = new AbortController();
+    printAbortControllerRef.current = controller;
+
+    try {
+      await printPDF({
+        buffer: activeTab.buffer,
+        fileName: activeTab.fileName,
+        filePath: activeTab.filePath,
+        doc,
+        signal: controller.signal,
+        onProgress: (p) => setPrintProgress(p),
+      });
+    } catch (err) {
+      console.error("PDF Print error:", err);
     }
-  }, [tabs, activeId]);
+  }, [tabs, activeId, doc]);
+
+  const handleCancelPrint = useCallback(() => {
+    printAbortControllerRef.current?.abort();
+    setPrintProgress((prev) => (prev ? { ...prev, stage: "cancelled" } : null));
+  }, []);
+
+  const handleClosePrintModal = useCallback(() => {
+    setPrintProgress(null);
+  }, []);
 
   // ── Extract pages as image ZIP ───────────────────────────────────────────
   const handleExtract = useCallback(
@@ -144,9 +157,7 @@ function PDFApp({ initialFilePath }: { initialFilePath: string | null }) {
 
   const handleCancelExtract = useCallback(() => {
     abortControllerRef.current?.abort();
-    setExtractionProgress((prev) =>
-      prev ? { ...prev, stage: "cancelled" } : null
-    );
+    setExtractionProgress((prev) => (prev ? { ...prev, stage: "cancelled" } : null));
   }, []);
 
   const handleCloseExtractModal = useCallback(() => {
@@ -163,8 +174,7 @@ function PDFApp({ initialFilePath }: { initialFilePath: string | null }) {
   useEffect(() => {
     if (!activeId || !state.isLoaded || switchingRef.current) return;
     saveTabState(activeId, state.currentPage, state.zoom, state.totalPages);
-    if (state.fileName)
-      updateRecentPage(state.fileName, state.currentPage, state.totalPages);
+    if (state.fileName) updateRecentPage(state.fileName, state.currentPage, state.totalPages);
   }, [
     state.currentPage,
     state.zoom,
@@ -178,9 +188,7 @@ function PDFApp({ initialFilePath }: { initialFilePath: string | null }) {
 
   // ── Core loader: multiple buffers → tabs → active PDF ──────────────────────
   const loadMultipleBuffers = useCallback(
-    async (
-      items: Array<{ buffer: ArrayBuffer; fileName: string; filePath: string }>
-    ) => {
+    async (items: Array<{ buffer: ArrayBuffer; fileName: string; filePath: string }>) => {
       if (items.length === 0) return;
       const capped = items.slice(0, 10);
       let targetTabId: string | null = null;
@@ -202,7 +210,12 @@ function PDFApp({ initialFilePath }: { initialFilePath: string | null }) {
           isExistingTab = !isNew;
         }
         if (isNew) {
-          addRecent({ fileName: item.fileName, filePath: item.filePath, lastPage: 1, totalPages: 0 });
+          addRecent({
+            fileName: item.fileName,
+            filePath: item.filePath,
+            lastPage: 1,
+            totalPages: 0,
+          });
         }
         // Persist buffer to IndexedDB for persistent recents in browser
         savePDFBuffer(item.fileName, item.buffer);
@@ -256,10 +269,17 @@ function PDFApp({ initialFilePath }: { initialFilePath: string | null }) {
     [loadMultiplePaths]
   );
 
-  // ── Load initial file passed via double-click (once on mount) ─────────────
+  // ── Load initial files passed via CLI, file association or double-click ─────
   useEffect(() => {
-    if (!initialFilePath) {
-      // No file — show window immediately after mount
+    const startingFiles =
+      initialFiles && initialFiles.length > 0
+        ? initialFiles
+        : initialFilePath
+          ? [initialFilePath]
+          : [];
+
+    if (startingFiles.length === 0) {
+      // No initial files — show window immediately
       if (IS_TAURI) {
         import("@tauri-apps/api/core").then(({ invoke }) => {
           invoke("show_window").catch(() => {});
@@ -267,10 +287,62 @@ function PDFApp({ initialFilePath }: { initialFilePath: string | null }) {
       }
       return;
     }
-    const fileName = initialFilePath.split(/[/\\]/).pop() ?? "document.pdf";
-    loadFromPath(initialFilePath, fileName);
+
+    loadMultiplePaths(startingFiles);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ── Listen for secondary-instance files & native desktop drag-and-drop ─────
+  useEffect(() => {
+    if (!IS_TAURI) return;
+    let isMounted = true;
+    let unlistenPending: (() => void) | undefined;
+    let unlistenDrop: (() => void) | undefined;
+
+    (async () => {
+      try {
+        const { listen } = await import("@tauri-apps/api/event");
+        const { invoke } = await import("@tauri-apps/api/core");
+
+        unlistenPending = await listen("pending-files", async () => {
+          try {
+            const files = await invoke<string[]>("take_pending_files");
+            if (files && files.length > 0 && isMounted) {
+              await loadMultiplePaths(files);
+            }
+          } catch (e) {
+            console.error("Failed to load pending files:", e);
+          }
+        });
+
+        const { getCurrentWebview } = await import("@tauri-apps/api/webview");
+        unlistenDrop = await getCurrentWebview().onDragDropEvent(async (event) => {
+          if (!isMounted) return;
+          if (event.payload.type === "enter" || event.payload.type === "over") {
+            setIsDraggingOver(true);
+          } else if (event.payload.type === "leave") {
+            setIsDraggingOver(false);
+          } else if (event.payload.type === "drop") {
+            setIsDraggingOver(false);
+            const pdfPaths = (event.payload.paths || []).filter((p) =>
+              p.toLowerCase().endsWith(".pdf")
+            );
+            if (pdfPaths.length > 0) {
+              await loadMultiplePaths(pdfPaths);
+            }
+          }
+        });
+      } catch (err) {
+        console.warn("Tauri event listeners registration error:", err);
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+      if (unlistenPending) unlistenPending();
+      if (unlistenDrop) unlistenDrop();
+    };
+  }, [loadMultiplePaths]);
 
   useEffect(() => {
     if (!pendingFile && IS_TAURI) {
@@ -339,9 +411,7 @@ function PDFApp({ initialFilePath }: { initialFilePath: string | null }) {
       setIsDraggingOver(false);
 
       const files = Array.from(e.dataTransfer.files || [])
-        .filter(
-          (f) => f.name.toLowerCase().endsWith(".pdf") || f.type === "application/pdf"
-        )
+        .filter((f) => f.name.toLowerCase().endsWith(".pdf") || f.type === "application/pdf")
         .slice(0, 10);
 
       if (files.length === 0) return;
@@ -381,7 +451,7 @@ function PDFApp({ initialFilePath }: { initialFilePath: string | null }) {
       // 3. Fallback: prompt to pick file if buffer was cleared from cache
       handleOpenFile();
     },
-    [loadFromPath, loadMultipleBuffers, handleOpenFile],
+    [loadFromPath, loadMultipleBuffers, handleOpenFile]
   );
 
   // ── Remove from recents and delete cached buffer ───────────────────────────
@@ -406,7 +476,7 @@ function PDFApp({ initialFilePath }: { initialFilePath: string | null }) {
       setZoom(tab.savedZoom);
       switchingRef.current = false;
     },
-    [activeId, tabs, activateTab, loadPDF, goToPage, setZoom],
+    [activeId, tabs, activateTab, loadPDF, goToPage, setZoom]
   );
 
   // ── Close a tab ────────────────────────────────────────────────────────────
@@ -426,7 +496,7 @@ function PDFApp({ initialFilePath }: { initialFilePath: string | null }) {
         await resetPDF();
       }
     },
-    [activeId, tabs, closeTab, loadPDF, goToPage, setZoom, resetPDF],
+    [activeId, tabs, closeTab, loadPDF, goToPage, setZoom, resetPDF]
   );
 
   // ── Fit canvas to container width ──────────────────────────────────────────
@@ -523,8 +593,7 @@ function PDFApp({ initialFilePath }: { initialFilePath: string | null }) {
         onPrint={handlePrint}
         onExtract={handleExtract}
         isExtracting={
-          extractionProgress?.stage === "rendering" ||
-          extractionProgress?.stage === "compressing"
+          extractionProgress?.stage === "rendering" || extractionProgress?.stage === "compressing"
         }
       />
 
@@ -576,6 +645,14 @@ function PDFApp({ initialFilePath }: { initialFilePath: string | null }) {
           onClose={handleCloseExtractModal}
         />
       )}
+
+      {printProgress && (
+        <PrintProgressModal
+          progress={printProgress}
+          onCancel={handleCancelPrint}
+          onClose={handleClosePrintModal}
+        />
+      )}
     </div>
   );
 }
@@ -583,13 +660,15 @@ function PDFApp({ initialFilePath }: { initialFilePath: string | null }) {
 // ─── Root ─────────────────────────────────────────────────────────────────────
 
 export default function App({
+  initialFiles,
   initialFilePath,
 }: {
-  initialFilePath: string | null;
+  initialFiles?: string[];
+  initialFilePath?: string | null;
 }) {
   return (
     <ThemeProvider>
-      <PDFApp initialFilePath={initialFilePath} />
+      <PDFApp initialFiles={initialFiles} initialFilePath={initialFilePath} />
     </ThemeProvider>
   );
 }

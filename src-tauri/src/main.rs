@@ -1,12 +1,56 @@
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use tauri::Manager;
-// use tauri::Emitter;
+use std::path::Path;
 use std::sync::Mutex;
+use tauri::{Emitter, Manager};
 
-// Holds the file path passed via CLI (double-click / file association)
-struct InitialFile(Mutex<Option<String>>);
+/// Queue of PDF paths waiting to be opened by the frontend.
+///
+/// Filled from three sources and drained by `take_pending_files`:
+/// - CLI arguments of the first launch (all platforms)
+/// - arguments of a second launch, forwarded by the single-instance plugin (Windows / Linux)
+/// - "Open With" / double-click events from Finder (macOS)
+struct PendingFiles(Mutex<Vec<String>>);
+
+/// Emitted (without payload) whenever new paths are queued; the frontend then drains the queue.
+const PENDING_FILES_EVENT: &str = "pending-files";
+
+fn is_pdf_path(path: &str) -> bool {
+    path.to_lowercase().ends_with(".pdf")
+}
+
+/// Keep only PDF arguments and resolve relative paths against the launching process' cwd.
+fn pdf_paths_from_args(args: impl IntoIterator<Item = String>, cwd: Option<&Path>) -> Vec<String> {
+    args.into_iter()
+        .filter(|arg| is_pdf_path(arg))
+        .map(|arg| match cwd {
+            Some(dir) if Path::new(&arg).is_relative() => {
+                dir.join(&arg).to_string_lossy().into_owned()
+            }
+            _ => arg,
+        })
+        .collect()
+}
+
+fn queue_pending_files(app: &tauri::AppHandle, paths: Vec<String>) {
+    if paths.is_empty() {
+        return;
+    }
+    if let Some(state) = app.try_state::<PendingFiles>() {
+        state.0.lock().unwrap().extend(paths);
+    }
+    let _ = app.emit(PENDING_FILES_EVENT, ());
+}
+
+#[cfg(any(target_os = "windows", target_os = "linux"))]
+fn focus_main_window(app: &tauri::AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.unminimize();
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
+}
 
 // Keeps the active PDFDocument retained while the asynchronous macOS print sheet is open
 #[cfg(target_os = "macos")]
@@ -24,16 +68,32 @@ extern "C" {
 }
 
 fn main() {
-    tauri::Builder::default()
+    // Every PDF passed on the command line (Explorer / file manager can pass several at once)
+    let launch_files = pdf_paths_from_args(
+        std::env::args().skip(1),
+        std::env::current_dir().ok().as_deref(),
+    );
+
+    #[allow(unused_mut)]
+    let mut builder = tauri::Builder::default();
+
+    // Windows & Linux start a new process per "Open With" / double-click.
+    // Forward those files to the already running window so they open as tabs.
+    // (macOS is single-instance by design and delivers files via RunEvent::Opened.)
+    #[cfg(any(target_os = "windows", target_os = "linux"))]
+    {
+        builder = builder.plugin(tauri_plugin_single_instance::init(|app, argv, cwd| {
+            let files = pdf_paths_from_args(argv.into_iter().skip(1), Some(Path::new(&cwd)));
+            queue_pending_files(app, files);
+            focus_main_window(app);
+        }));
+    }
+
+    let app = builder
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
-        .manage(InitialFile(Mutex::new(
-            // Capture CLI arg at startup, before any async work
-            std::env::args()
-                .nth(1)
-                .filter(|p| p.to_lowercase().ends_with(".pdf"))
-        )))
+        .manage(PendingFiles(Mutex::new(launch_files)))
         .setup(|app| {
             let window = app.get_webview_window("main").unwrap();
             window.center().unwrap();
@@ -107,19 +167,33 @@ fn main() {
         })
         .invoke_handler(tauri::generate_handler![
             read_pdf_file,
-            get_initial_file,
+            take_pending_files,
             show_window,
             write_binary_file,
             print_pdf_file,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application");
+
+    app.run(|_app_handle, _event| {
+        // macOS: files opened from Finder ("Open With", double-click, drag onto Dock icon)
+        #[cfg(target_os = "macos")]
+        if let tauri::RunEvent::Opened { urls } = _event {
+            let files = urls
+                .into_iter()
+                .filter_map(|url| url.to_file_path().ok())
+                .map(|path| path.to_string_lossy().into_owned())
+                .filter(|path| is_pdf_path(path))
+                .collect();
+            queue_pending_files(_app_handle, files);
+        }
+    });
 }
 
-/// Called by frontend on mount to get the file path passed via double-click
+/// Drains the queue of PDF paths waiting to be opened (launch args, second instances, Finder)
 #[tauri::command]
-fn get_initial_file(state: tauri::State<InitialFile>) -> Option<String> {
-    state.0.lock().unwrap().clone()
+fn take_pending_files(state: tauri::State<PendingFiles>) -> Vec<String> {
+    std::mem::take(&mut *state.0.lock().unwrap())
 }
 
 /// Read a PDF file from disk and return its bytes as base64
@@ -297,31 +371,12 @@ async fn print_pdf_file(
         Ok(())
     }
 
+    // Windows (WebView2) and Linux (WebKitGTK) open their own print dialog from the
+    // webview via `window.print()`, so the frontend handles printing there.
     #[cfg(not(target_os = "macos"))]
     {
-        let target_path = if let Some(p) = path.filter(|s| !s.is_empty()) {
-            p
-        } else if let Some(bytes) = data {
-            let temp_path = std::env::temp_dir().join("pdf_reader_print.pdf");
-            std::fs::write(&temp_path, &bytes).map_err(|e| e.to_string())?;
-            temp_path.to_string_lossy().to_string()
-        } else {
-            return Err("No file path or data provided for printing".into());
-        };
-
-        #[cfg(target_os = "windows")]
-        {
-            let _ = std::process::Command::new("cmd")
-                .args(["/C", "start", "", "/P", &target_path])
-                .spawn();
-            Ok(())
-        }
-
-        #[cfg(not(target_os = "windows"))]
-        {
-            let _ = std::process::Command::new("lpr").arg(&target_path).spawn();
-            Ok(())
-        }
+        let _ = (app, path, data);
+        Err("Native PDF printing is only available on macOS".into())
     }
 }
 
