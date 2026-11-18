@@ -1,0 +1,107 @@
+name: Tauri Desktop Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build ${{ matrix.name }}
+
+    strategy:
+      fail-fast: false
+
+      matrix:
+        include:
+          # macOS Apple Silicon
+          - name: macOS ARM64
+            platform: macos-latest
+            args: --target aarch64-apple-darwin
+
+          # macOS Intel
+          - name: macOS Intel
+            platform: macos-latest
+            args: --target x86_64-apple-darwin
+
+          # Windows x64
+          - name: Windows x64
+            platform: windows-latest
+            args: ""
+
+          # Linux x64
+          - name: Linux x64
+            platform: ubuntu-22.04
+            args: ""
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7
+
+      # Linux build dependencies
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            xdg-utils
+
+      # Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: lts/*
+          cache: npm
+
+      # Rust
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ runner.os == 'macOS' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      # Rust compilation cache
+      - name: Cache Rust dependencies
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+
+      # Frontend dependencies
+      - name: Install npm dependencies
+        run: npm ci
+
+      # macOS ad-hoc signing for initial unsigned releases
+      - name: Set macOS signing identity
+        if: runner.os == 'macOS'
+        run: echo "APPLE_SIGNING_IDENTITY=-" >> "$GITHUB_ENV"
+
+      # Build and publish
+      - name: Build Tauri application
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: "Desktop Application ${{ github.ref_name }}"
+          releaseBody: |
+            ## Desktop Application Release
+
+            Download the installer for your operating system.
+
+            ### Supported platforms
+            - Windows x64
+            - macOS Apple Silicon
+            - macOS Intel
+            - Linux x64
+
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}
