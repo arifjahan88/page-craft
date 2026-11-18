@@ -172,7 +172,7 @@ yarn build:linux
 
 A pre-configured GitHub Actions workflow is included at [`.github/workflows/build-all.yml`](.github/workflows/build-all.yml). 
 
-Whenever you push a git tag (e.g., `v1.0.0`) or manually trigger the workflow from the **Actions** tab on GitHub:
+To build all installers, simply trigger the workflow manually from the **Actions** tab on GitHub (no git tag needed):
 1. Matrix runners spin up on **macOS**, **Windows**, and **Ubuntu**.
 2. Each platform compiles native GUI toolkits and packages installers simultaneously.
 3. Automatically drafts a GitHub Release containing all `.dmg`, `.exe`, `.msi`, `.AppImage`, and `.deb` binaries ready for download.

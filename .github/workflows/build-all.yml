@@ -2,9 +2,11 @@ name: PageCraft Desktop Release
 
 on:
   workflow_dispatch:
-  push:
-    tags:
-      - "v*"
+    inputs:
+      version:
+        description: "Release Version"
+        required: false
+        default: "v1.0.0"
 
 permissions:
   contents: write
@@ -90,18 +92,15 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: "PageCraft ${{ github.ref_name }}"
+          tagName: ${{ inputs.version || 'v1.0.0' }}
+          releaseName: "PageCraft ${{ inputs.version || 'v1.0.0' }}"
           releaseBody: |
-            ## PageCraft Desktop Release
+            ## PageCraft Desktop Release (${{ inputs.version || 'v1.0.0' }})
 
-            Download the installer for your operating system.
-
-            ### Supported platforms
-            - Windows x64
-            - macOS Apple Silicon
-            - macOS Intel
-            - Linux x64
+            Download the installer for your operating system:
+            - **macOS**: `.dmg` (Apple Silicon or Intel)
+            - **Windows**: `.exe` / `.msi`
+            - **Linux**: `.AppImage` / `.deb`
 
           releaseDraft: true
           prerelease: false
