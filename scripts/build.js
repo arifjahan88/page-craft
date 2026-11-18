@@ -10,7 +10,7 @@ const platform = os.platform();
 if (platform === "darwin") {
   console.log("📦 Building macOS application (.app & .dmg)...\n");
   try {
-    execSync("npx tauri build", { stdio: "inherit" });
+    execSync("yarn tauri build", { stdio: "inherit" });
     console.log("\n✅ macOS build completed successfully!");
     console.log("📂 Output location:");
     console.log("   • .app: src-tauri/target/release/bundle/macos/PageCraft.app");
@@ -30,12 +30,12 @@ if (platform === "darwin") {
   console.log("------------------------------------------\n");
 } else if (platform === "win32") {
   console.log("📦 Building Windows application (.exe & .msi)...\n");
-  execSync("npx tauri build", { stdio: "inherit" });
+  execSync("yarn tauri build", { stdio: "inherit" });
   console.log("\n✅ Windows build completed successfully!");
   console.log("📂 Output location: src-tauri/target/release/bundle/nsis/ and /msi/");
 } else if (platform === "linux") {
   console.log("📦 Building Linux application (.deb & .AppImage)...\n");
-  execSync("npx tauri build", { stdio: "inherit" });
+  execSync("yarn tauri build", { stdio: "inherit" });
   console.log("\n✅ Linux build completed successfully!");
   console.log("📂 Output location: src-tauri/target/release/bundle/appimage/ and /deb/");
 }

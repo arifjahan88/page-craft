@@ -111,8 +111,6 @@ git clone https://github.com/your-username/pagecraft.git
 cd pagecraft
 
 # 2. Install dependencies
-npm install
-# or
 yarn install
 ```
 
@@ -122,15 +120,11 @@ yarn install
 
 #### 🖥️ Desktop Application (Tauri Live Reload)
 ```bash
-npm run dev:desktop
-# or
 yarn dev:desktop
 ```
 
 #### 🌐 Web Application (Browser Mode)
 ```bash
-npm run dev
-# or
 yarn dev
 ```
 Open [http://localhost:1420](http://localhost:1420) in your browser. All viewer features, search, tab management, and extraction work identically in web mode.
@@ -142,8 +136,6 @@ Open [http://localhost:1420](http://localhost:1420) in your browser. All viewer 
 ### Unified Desktop Build Script
 Run the automated desktop builder script:
 ```bash
-npm run build:all
-# or
 yarn build:all
 ```
 
@@ -151,16 +143,16 @@ yarn build:all
 
 ```bash
 # macOS (.app & .dmg)
-npm run build:mac
+yarn build:mac
 
 # macOS Universal Binary (Apple Silicon + Intel)
-npm run build:mac:universal
+yarn build:mac:universal
 
 # Windows (.exe NSIS & .msi) — run on Windows
-npm run build:win
+yarn build:win
 
 # Linux (.deb & .AppImage) — run on Linux
-npm run build:linux
+yarn build:linux
 ```
 
 ### 📂 Build Output Locations
@@ -247,13 +239,13 @@ The codebase enforces strict TypeScript typing, Prettier formatting, and ESLint 
 
 ```bash
 # Check code formatting
-npm run format:check
+yarn format:check
 
 # Format codebase with Prettier
-npm run format
+yarn format
 
 # Run linter
-npm run lint:check
+yarn lint:check
 ```
 
 ---
