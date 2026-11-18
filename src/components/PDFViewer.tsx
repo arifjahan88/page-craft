@@ -28,6 +28,7 @@ interface PDFViewerProps {
   recents: RecentFile[];
   onOpenRecent: (filePath: string, fileName: string) => void;
   onRemoveRecent: (fileName: string) => void;
+  onClearAllRecents: () => void;
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -54,6 +55,7 @@ export const PDFViewer = forwardRef<HTMLDivElement, PDFViewerProps>(function PDF
     recents,
     onOpenRecent,
     onRemoveRecent,
+    onClearAllRecents,
   }: PDFViewerProps,
   ref: ((node: HTMLDivElement | null) => void) | MutableRefObject<HTMLDivElement | null> | null
 ) {
@@ -338,6 +340,7 @@ export const PDFViewer = forwardRef<HTMLDivElement, PDFViewerProps>(function PDF
             recents={recents}
             onOpenRecent={onOpenRecent}
             onRemoveRecent={onRemoveRecent}
+            onClearAllRecents={onClearAllRecents}
           />
         ))}
 
@@ -599,12 +602,16 @@ function EmptyState({
   recents,
   onOpenRecent,
   onRemoveRecent,
+  onClearAllRecents,
 }: {
   onOpenFile: () => void;
   recents: RecentFile[];
   onOpenRecent: (filePath: string, fileName: string) => void;
   onRemoveRecent: (fileName: string) => void;
+  onClearAllRecents: () => void;
 }) {
+  const hasRecents = recents.length > 0;
+
   const formatDate = (ts: number) => {
     const diff = Math.floor((Date.now() - ts) / 86400000);
     if (diff === 0) return "Today";
@@ -617,7 +624,8 @@ function EmptyState({
   };
 
   return (
-    <div className={styles.emptyState}>
+    <div className={hasRecents ? styles.emptyStateTop : styles.emptyStateCentered}>
+      {/* Hero section */}
       <div className={styles.emptyHero}>
         <div className={styles.emptyIcon}>
           <svg width="40" height="48" viewBox="0 0 56 64" fill="none">
@@ -651,48 +659,52 @@ function EmptyState({
         <button className={styles.emptyBtn} onClick={onOpenFile}>
           Open PDF
         </button>
-        <p className={styles.emptyHint}>Ctrl+O</p>
+        <p className={styles.emptyHint}>Ctrl+O · Supports up to 10 files</p>
       </div>
 
-      {recents.length > 0 && (
+      {/* Recents Section: Modern Card-Wise Grid */}
+      {hasRecents && (
         <div className={styles.recentsWrap}>
-          <p className={styles.recentsLabel}>Recent</p>
-          <div className={styles.recentsList}>
+          <div className={styles.recentsHeader}>
+            <span className={styles.recentsLabel}>Recent Documents</span>
+            <div className={styles.recentsActions}>
+              <span className={styles.recentsCount}>{recents.length} files</span>
+              <span className={styles.recentsDot}>·</span>
+              <button
+                className={styles.clearRecentsBtn}
+                onClick={onClearAllRecents}
+                title="Clear all recent documents and storage"
+              >
+                Clear all
+              </button>
+            </div>
+          </div>
+
+          <div className={styles.recentsGrid}>
             {recents.map((r) => (
-              <div key={r.fileName} className={styles.recentRow}>
-                <button
-                  className={styles.recentMain}
-                  onClick={() => onOpenRecent(r.filePath, r.fileName)}
-                  title={r.filePath || r.fileName}
-                >
-                  <div className={styles.recentFileIcon}>
-                    <svg width="14" height="16" viewBox="0 0 14 16" fill="none">
-                      <rect
-                        x="0.5"
-                        y="0.5"
-                        width="13"
-                        height="15"
-                        rx="2"
-                        fill="none"
-                        stroke="var(--border)"
-                        strokeWidth="1"
-                      />
-                      <path d="M9 0.5v3.5a1 1 0 001 1h3.5" stroke="var(--border)" strokeWidth="1" />
-                      <rect x="2" y="7" width="7" height="1" rx="0.5" fill="var(--text-muted)" />
-                      <rect x="2" y="9.5" width="5" height="1" rx="0.5" fill="var(--text-muted)" />
-                      <rect x="2" y="12" width="4" height="1" rx="0.5" fill="var(--text-muted)" />
-                    </svg>
+              <div
+                key={r.fileName}
+                className={styles.recentCard}
+                onClick={() => onOpenRecent(r.filePath, r.fileName)}
+                title={r.filePath || r.fileName}
+              >
+                <div className={styles.recentCardThumb}>
+                  <div className={styles.recentCardFileIcon}>
+                    <FileText size={36} strokeWidth={1.5} color="var(--text-secondary)" />
                   </div>
-                  <div className={styles.recentInfo}>
-                    <span className={styles.recentName}>{r.fileName}</span>
-                    <span className={styles.recentMeta}>
-                      {r.totalPages > 0 && `Page ${r.lastPage} of ${r.totalPages} · `}
-                      {formatDate(r.openedAt)}
-                    </span>
-                  </div>
-                </button>
+                  <span className={styles.pdfBadge}>PDF</span>
+                </div>
+
+                <div className={styles.recentCardBody}>
+                  <span className={styles.recentCardTitle}>{r.fileName}</span>
+                  <span className={styles.recentCardMeta}>
+                    {r.totalPages > 0 ? `Page ${r.lastPage} of ${r.totalPages} · ` : ""}
+                    {formatDate(r.openedAt)}
+                  </span>
+                </div>
+
                 <button
-                  className={styles.recentRemove}
+                  className={styles.recentCardDelete}
                   onClick={(e) => {
                     e.stopPropagation();
                     onRemoveRecent(r.fileName);
