@@ -1,0 +1,108 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <!-- Background Squircle Gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e1b4b" />
+      <stop offset="45%" stop-color="#312e81" />
+      <stop offset="100%" stop-color="#0f172a" />
+    </linearGradient>
+
+    <!-- Aurora Glow Top-Left -->
+    <radialGradient id="glowTopLeft" cx="22%" cy="18%" r="65%">
+      <stop offset="0%" stop-color="#6366f1" stop-opacity="0.72" />
+      <stop offset="55%" stop-color="#8b5cf6" stop-opacity="0.25" />
+      <stop offset="100%" stop-color="#6366f1" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Aurora Glow Bottom-Right -->
+    <radialGradient id="glowBottomRight" cx="82%" cy="85%" r="60%">
+      <stop offset="0%" stop-color="#ec4899" stop-opacity="0.45" />
+      <stop offset="50%" stop-color="#6366f1" stop-opacity="0.2" />
+      <stop offset="100%" stop-color="#0f172a" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Main Document Page Gradient -->
+    <linearGradient id="pageGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="100%" stop-color="#f1f5f9" />
+    </linearGradient>
+
+    <!-- Back Page Gradient -->
+    <linearGradient id="backPageGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#a5b4fc" stop-opacity="0.45" />
+      <stop offset="100%" stop-color="#6366f1" stop-opacity="0.25" />
+    </linearGradient>
+
+    <!-- Folded Corner Gradient -->
+    <linearGradient id="foldGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#cbd5e1" />
+      <stop offset="50%" stop-color="#e2e8f0" />
+      <stop offset="100%" stop-color="#f8fafc" />
+    </linearGradient>
+
+    <!-- PDF Badge Gradient -->
+    <linearGradient id="badgeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366f1" />
+      <stop offset="50%" stop-color="#4f46e5" />
+      <stop offset="100%" stop-color="#7c3aed" />
+    </linearGradient>
+
+    <!-- Accent Bar Gradient -->
+    <linearGradient id="accentLine" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#6366f1" />
+      <stop offset="100%" stop-color="#a855f7" />
+    </linearGradient>
+  </defs>
+
+  <!-- Outer Shadow Layer -->
+  <rect x="86" y="102" width="852" height="852" rx="192" fill="#020617" opacity="0.45" />
+  <rect x="82" y="92" width="860" height="860" rx="194" fill="#020617" opacity="0.3" />
+
+  <!-- macOS Squircle Base -->
+  <rect x="80" y="80" width="864" height="864" rx="194" fill="url(#bgGrad)" />
+  <rect x="80" y="80" width="864" height="864" rx="194" fill="url(#glowTopLeft)" />
+  <rect x="80" y="80" width="864" height="864" rx="194" fill="url(#glowBottomRight)" />
+
+  <!-- Squircle Inner Glass Border -->
+  <rect x="83" y="83" width="858" height="858" rx="191" fill="none" stroke="#ffffff" stroke-opacity="0.18" stroke-width="6" />
+
+  <!-- Decorative Back Page (Tilted) -->
+  <g transform="rotate(-6 512 512)">
+    <rect x="285" y="210" width="440" height="580" rx="44" fill="url(#backPageGrad)" stroke="#c7d2fe" stroke-opacity="0.35" stroke-width="3" />
+  </g>
+
+  <!-- Document Drop Shadow -->
+  <path d="M320 218 H598 L736 356 V766 C736 792.5 714.5 814 688 814 H320 C293.5 814 272 792.5 272 766 V266 C272 239.5 293.5 218 320 218 Z" fill="#090d16" opacity="0.38" />
+  <path d="M320 208 H598 L736 346 V756 C736 782.5 714.5 804 688 804 H320 C293.5 804 272 782.5 272 756 V256 C272 229.5 293.5 208 320 208 Z" fill="#090d16" opacity="0.22" />
+
+  <!-- Main White Document Sheet -->
+  <path d="M320 196 H598 L736 334 V744 C736 770.5 714.5 792 688 792 H320 C293.5 792 272 770.5 272 744 V244 C272 217.5 293.5 196 320 196 Z" fill="url(#pageGrad)" />
+
+  <!-- Folded Corner Shadow -->
+  <path d="M598 196 L736 334 H630 C608 334 598 324 598 302 Z" fill="#94a3b8" opacity="0.35" transform="translate(0, 6)" />
+
+  <!-- Folded Corner Flap -->
+  <path d="M598 196 L736 334 H634 C614.1 334 598 317.9 598 298 V196 Z" fill="url(#foldGrad)" />
+
+  <!-- Document Content: Header Pill & Lines -->
+  <rect x="336" y="286" width="160" height="24" rx="12" fill="url(#accentLine)" />
+  <rect x="336" y="344" width="320" height="20" rx="10" fill="#cbd5e1" />
+  <rect x="336" y="388" width="280" height="20" rx="10" fill="#cbd5e1" />
+  <rect x="336" y="432" width="336" height="20" rx="10" fill="#e2e8f0" />
+  <rect x="336" y="476" width="230" height="20" rx="10" fill="#e2e8f0" />
+
+  <!-- PDF Badge Pill (Shadow + Base) -->
+  <rect x="332" y="562" width="344" height="148" rx="36" fill="#312e81" opacity="0.22" />
+  <rect x="332" y="552" width="344" height="148" rx="36" fill="url(#badgeGrad)" />
+  <rect x="334" y="554" width="340" height="144" rx="34" fill="none" stroke="#ffffff" stroke-opacity="0.28" stroke-width="3" />
+
+  <!-- Vector "PDF" Letters inside Badge -->
+  <g fill="#ffffff" transform="translate(-11, 0)">
+    <!-- Letter P -->
+    <path d="M392 588 H434 C454.5 588 468 600.2 468 618.5 C468 636.8 454.5 649 434 649 H412 V672 H392 V588 Z M412 605 V632 H431 C441.5 632 448 626.8 448 618.5 C448 610.2 441.5 605 431 605 H412 Z" />
+    <!-- Letter D -->
+    <path d="M482 588 H518 C545.5 588 563 604.8 563 630 C563 655.2 545.5 672 518 672 H482 V588 Z M502 605.5 V654.5 H517 C533.5 654.5 543 644.8 543 630 C543 615.2 533.5 605.5 517 605.5 H502 Z" />
+    <!-- Letter F -->
+    <path d="M579 588 H637 V605.5 H599 V622.5 H632 V639.5 H599 V672 H579 V588 Z" />
+  </g>
+</svg>

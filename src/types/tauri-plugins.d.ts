@@ -7,7 +7,13 @@ declare module "@tauri-apps/plugin-dialog" {
     filters?: Array<{ name: string; extensions: string[] }>;
     defaultPath?: string;
   }
+  export interface SaveDialogOptions {
+    filters?: Array<{ name: string; extensions: string[] }>;
+    defaultPath?: string;
+    title?: string;
+  }
   export function open(options?: OpenDialogOptions): Promise<string | string[] | null>;
+  export function save(options?: SaveDialogOptions): Promise<string | null>;
 }
 
 declare module "@tauri-apps/plugin-fs" {

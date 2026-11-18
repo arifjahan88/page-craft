@@ -182,12 +182,44 @@ export async function extractPDFPagesAsZip({
       return;
     }
 
-    // ── Phase 3: Trigger automatic download ──────────────────────────────────
+    // ── Phase 3: Save file (Native OS dialog in Tauri, <a> download in browser)
+    const zipFileName = `${cleanTitle} - Extracted Pages (${formatLabel}).zip`;
+    const IS_TAURI = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+
+    if (IS_TAURI) {
+      try {
+        const { save } = await import("@tauri-apps/plugin-dialog");
+        const savePath = await save({
+          defaultPath: zipFileName,
+          filters: [{ name: "ZIP Archive", extensions: ["zip"] }],
+        });
+
+        if (savePath) {
+          const uint8 = new Uint8Array(await zipBlob.arrayBuffer());
+          try {
+            const { writeFile } = await import("@tauri-apps/plugin-fs");
+            await writeFile(savePath, uint8);
+          } catch (fsErr) {
+            console.warn("plugin-fs writeFile failed, falling back to write_binary_file:", fsErr);
+            const { invoke } = await import("@tauri-apps/api/core");
+            await invoke("write_binary_file", {
+              path: savePath,
+              data: Array.from(uint8),
+            });
+          }
+          update("complete", totalPages, 100);
+        } else {
+          update("cancelled", totalPages, 100);
+        }
+        return;
+      } catch (err) {
+        console.warn("Tauri native save error, falling back to browser download:", err);
+      }
+    }
+
     update("complete", totalPages, 100);
 
-    const zipFileName = `${cleanTitle} - Extracted Pages (${formatLabel}).zip`;
     const downloadUrl = URL.createObjectURL(zipBlob);
-
     const anchor = document.createElement("a");
     anchor.href = downloadUrl;
     anchor.download = zipFileName;

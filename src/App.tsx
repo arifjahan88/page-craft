@@ -115,7 +115,7 @@ function PDFApp({ initialFilePath }: { initialFilePath: string | null }) {
   const handlePrint = useCallback(() => {
     const activeTab = tabs.find((t) => t.id === activeId);
     if (activeTab?.buffer) {
-      printPDFBuffer(activeTab.buffer);
+      printPDFBuffer(activeTab.buffer, activeTab.filePath);
     }
   }, [tabs, activeId]);
 

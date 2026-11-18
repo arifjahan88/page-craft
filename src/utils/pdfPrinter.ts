@@ -1,8 +1,24 @@
 // ─── Native High-Fidelity PDF Printing Utility ───────────────────────────────
-// Creates an isolated PDF blob stream and invokes the native print dialog
-// preserving 100% original vector sharpness, text, and page geometries.
+// In desktop (Tauri): invokes native OS print pipeline avoiding WKWebView sandbox issues
+// In browser: creates an isolated PDF blob stream and invokes the native print dialog
 
-export function printPDFBuffer(buffer: ArrayBuffer): void {
+export const IS_TAURI = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+
+export async function printPDFBuffer(buffer: ArrayBuffer, filePath?: string): Promise<void> {
+  if (IS_TAURI) {
+    try {
+      const { invoke } = await import("@tauri-apps/api/core");
+      const data = filePath ? null : Array.from(new Uint8Array(buffer));
+      await invoke("print_pdf_file", {
+        path: filePath || null,
+        data,
+      });
+      return;
+    } catch (err) {
+      console.warn("Tauri native print invocation error, falling back to browser print:", err);
+    }
+  }
+
   const blob = new Blob([buffer], { type: "application/pdf" });
   const url = URL.createObjectURL(blob);
 

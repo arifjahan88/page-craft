@@ -695,55 +695,12 @@ function EmptyState({
       {/* Hero section */}
       <div className={styles.emptyHero}>
         <div className={styles.emptyIcon}>
-          <svg width="38" height="46" viewBox="0 0 56 64" fill="none">
-            <rect
-              x="1"
-              y="1"
-              width="54"
-              height="62"
-              rx="6"
-              fill="none"
-              stroke="var(--border-card)"
-              strokeWidth="1.5"
-            />
-            <rect
-              x="1"
-              y="1"
-              width="54"
-              height="62"
-              rx="6"
-              fill="var(--accent)"
-              fillOpacity="0.08"
-            />
-            <path d="M36 1v14a2 2 0 002 2h14" stroke="var(--border-card)" strokeWidth="1.5" />
-            <rect
-              x="12"
-              y="26"
-              width="32"
-              height="2"
-              rx="1"
-              fill="var(--accent)"
-              fillOpacity="0.6"
-            />
-            <rect
-              x="12"
-              y="34"
-              width="24"
-              height="2"
-              rx="1"
-              fill="var(--text-secondary)"
-              fillOpacity="0.5"
-            />
-            <rect
-              x="12"
-              y="42"
-              width="18"
-              height="2"
-              rx="1"
-              fill="var(--text-secondary)"
-              fillOpacity="0.4"
-            />
-          </svg>
+          <img
+            src="/favicon.svg"
+            alt="PDF Reader"
+            className={styles.emptyIconImg}
+            draggable={false}
+          />
         </div>
         <h2 className={styles.emptyTitle}>PDF Reader</h2>
         <p className={styles.emptySubtitle}>Fast, minimal, distraction-free</p>
