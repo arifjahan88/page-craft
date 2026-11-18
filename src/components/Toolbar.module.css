@@ -14,6 +14,12 @@
   z-index: 10;
 }
 
+/* ── Home Page Toolbar (blends with page canvas bg, no border) ── */
+.homeToolbar {
+  background: var(--bg-canvas) !important;
+  border-bottom: 1px solid transparent !important;
+}
+
 /* ── Sections ── */
 .section {
   display: flex;
@@ -30,7 +36,8 @@
   flex-shrink: 0;
 }
 
-/* ── Open Button ── */
+/* ── Back & Open Buttons ── */
+.backBtn,
 .openBtn {
   display: flex;
   align-items: center;
@@ -47,14 +54,27 @@
   white-space: nowrap;
   transition:
     background 120ms ease,
-    border-color 120ms ease;
+    border-color 120ms ease,
+    transform 80ms ease;
+  flex-shrink: 0;
 }
+
+.backBtn:hover,
 .openBtn:hover {
   background: var(--bg-button-hover);
   border-color: var(--border-focus);
 }
+
+.backBtn:active,
 .openBtn:active {
   background: var(--bg-button-active);
+  transform: scale(0.97);
+}
+
+.btnLabel {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
 }
 
 /* ── Filename ── */
@@ -65,7 +85,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 260px;
+  max-width: 240px;
   letter-spacing: 0.01em;
 }
 
@@ -96,6 +116,7 @@
     background 100ms ease,
     color 100ms ease;
   font-family: inherit;
+  flex-shrink: 0;
 }
 .iconBtn:hover:not(:disabled) {
   background: var(--bg-button-hover);
@@ -121,11 +142,12 @@
   font-size: 12px;
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 /* ── Number buttons (click to edit) ── */
 .numBtn {
-  min-width: 36px;
+  min-width: 34px;
   padding: 2px 6px;
   background: transparent;
   color: var(--text-primary);
@@ -198,9 +220,226 @@
     border-color 120ms,
     color 120ms;
   font-family: inherit;
+  flex-shrink: 0;
 }
 .themeBtn:hover {
   background: var(--bg-button-hover);
   border-color: var(--border-focus);
   color: var(--text-primary);
+}
+
+/* ── Inline Search Pill in Toolbar ── */
+.searchPill {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--bg-button);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 2px 4px;
+  animation: fadeIn 150ms ease;
+  flex-shrink: 0;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.searchInputWrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0 8px;
+  height: 28px;
+  transition: border-color 120ms;
+}
+.searchInputWrap:focus-within {
+  border-color: var(--border-focus);
+}
+.noMatchWrap {
+  border-color: rgba(224, 108, 117, 0.7) !important;
+}
+
+.searchPillIcon {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.searchInput {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-family: inherit;
+  outline: none;
+  width: 130px;
+  min-width: 70px;
+}
+.searchInput::placeholder {
+  color: var(--text-muted);
+}
+
+.searchCount {
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+.noMatchText {
+  color: #e06c75;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.spin {
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  animation: spin 700ms linear infinite;
+}
+
+.searchBtns {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+}
+
+.iconBtnSmall {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: transparent;
+  color: var(--text-secondary);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition:
+    background 100ms ease,
+    color 100ms ease;
+  font-family: inherit;
+}
+.iconBtnSmall:hover:not(:disabled) {
+  background: var(--bg-button-hover);
+  color: var(--text-primary);
+}
+.iconBtnSmall:disabled {
+  color: var(--text-muted);
+  cursor: default;
+}
+
+.miniDivider {
+  width: 1px;
+  height: 14px;
+  background: var(--border);
+  margin: 0 2px;
+  flex-shrink: 0;
+}
+
+/* ── Responsive Rules (Tablet & Mobile) ── */
+
+@media (max-width: 900px) {
+  .toolbar {
+    padding: 0 12px;
+    gap: 8px;
+  }
+  .fileName {
+    max-width: 140px;
+  }
+  .section {
+    gap: 6px;
+  }
+  .searchInput {
+    width: 105px;
+  }
+}
+
+@media (max-width: 768px) {
+  .fileName {
+    max-width: 90px;
+  }
+}
+
+@media (max-width: 640px) {
+  .toolbar {
+    height: 48px;
+    padding: 0 8px;
+    gap: 4px;
+  }
+  .btnLabel {
+    display: none;
+  }
+  .openBtn,
+  .backBtn {
+    padding: 6px 8px;
+  }
+  .fileName {
+    display: none;
+  }
+  .hideMobile {
+    display: none !important;
+  }
+  .center {
+    gap: 4px;
+  }
+  .group {
+    padding: 2px;
+  }
+  .iconBtn {
+    width: 26px;
+    height: 26px;
+  }
+  .numBtn {
+    min-width: 28px;
+    padding: 2px 4px;
+    font-size: 11px;
+  }
+  .pageOf {
+    font-size: 11px;
+  }
+  .divider {
+    margin: 0 2px;
+  }
+  .searchInput {
+    width: 85px;
+  }
+  .searchPill {
+    padding: 1px 3px;
+  }
+}
+
+@media (max-width: 420px) {
+  .toolbar {
+    padding: 0 4px;
+    gap: 2px;
+  }
+  .openBtn,
+  .backBtn {
+    padding: 5px 6px;
+  }
+  .iconBtn {
+    width: 24px;
+    height: 24px;
+  }
+  .numBtn {
+    min-width: 24px;
+    padding: 1px 3px;
+  }
+  .searchInput {
+    width: 70px;
+  }
 }
