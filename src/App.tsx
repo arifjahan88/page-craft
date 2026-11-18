@@ -8,12 +8,19 @@ import { Toolbar } from "./components/Toolbar";
 import { TabBar } from "./components/TabBar";
 import { PDFViewer } from "./components/PDFViewer";
 import { StatusBar } from "./components/StatusBar";
+import { ExtractionProgressModal } from "./components/ExtractionProgressModal";
 import {
   savePDFBuffer,
   getPDFBuffer,
   deletePDFBuffer,
   clearAllPDFBuffers,
 } from "./utils/pdfStorage";
+import { printPDFBuffer } from "./utils/pdfPrinter";
+import {
+  extractPDFPagesAsZip,
+  type ImageFormat,
+  type ExtractionProgress,
+} from "./utils/pdfExtractor";
 import styles from "./App.module.css";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -47,6 +54,9 @@ function PDFApp({ initialFilePath }: { initialFilePath: string | null }) {
   // true while the initial double-click file is loading — keeps spinner visible
   const [pendingFile, setPendingFile] = useState(initialFilePath !== null);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const [extractionProgress, setExtractionProgress] =
+    useState<ExtractionProgress | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // ── Hooks ──────────────────────────────────────────────────────────────────
   const {
@@ -100,6 +110,48 @@ function PDFApp({ initialFilePath }: { initialFilePath: string | null }) {
     clearAllRecents();
     await clearAllPDFBuffers();
   }, [clearAllRecents]);
+
+  // ── Print active PDF buffer ──────────────────────────────────────────────
+  const handlePrint = useCallback(() => {
+    const activeTab = tabs.find((t) => t.id === activeId);
+    if (activeTab?.buffer) {
+      printPDFBuffer(activeTab.buffer);
+    }
+  }, [tabs, activeId]);
+
+  // ── Extract pages as image ZIP ───────────────────────────────────────────
+  const handleExtract = useCallback(
+    async (format: ImageFormat) => {
+      if (!doc || !state.fileName) return;
+      abortControllerRef.current?.abort();
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
+      try {
+        await extractPDFPagesAsZip({
+          doc,
+          fileName: state.fileName,
+          format,
+          signal: controller.signal,
+          onProgress: (p) => setExtractionProgress(p),
+        });
+      } catch (err) {
+        console.error("PDF Extraction error:", err);
+      }
+    },
+    [doc, state.fileName]
+  );
+
+  const handleCancelExtract = useCallback(() => {
+    abortControllerRef.current?.abort();
+    setExtractionProgress((prev) =>
+      prev ? { ...prev, stage: "cancelled" } : null
+    );
+  }, []);
+
+  const handleCloseExtractModal = useCallback(() => {
+    setExtractionProgress(null);
+  }, []);
 
   // ── Dismiss spinner only after PDF is confirmed loaded or errored ──────────
   useEffect(() => {
@@ -404,6 +456,12 @@ function PDFApp({ initialFilePath }: { initialFilePath: string | null }) {
         e.preventDefault();
         handleFitToWidth();
       }
+      if (ctrl && (e.key === "p" || e.key === "P")) {
+        if (state.isLoaded) {
+          e.preventDefault();
+          handlePrint();
+        }
+      }
 
       if (ctrl && e.key === "Tab") {
         e.preventDefault();
@@ -421,6 +479,7 @@ function PDFApp({ initialFilePath }: { initialFilePath: string | null }) {
     openSearch,
     handleOpenFile,
     handleFitToWidth,
+    handlePrint,
     handleCloseTab,
     handleActivateTab,
     state.isLoaded,
@@ -461,6 +520,12 @@ function PDFApp({ initialFilePath }: { initialFilePath: string | null }) {
         onSearch={searchPDF}
         onNextMatch={goToNextMatch}
         onPrevMatch={goToPrevMatch}
+        onPrint={handlePrint}
+        onExtract={handleExtract}
+        isExtracting={
+          extractionProgress?.stage === "rendering" ||
+          extractionProgress?.stage === "compressing"
+        }
       />
 
       <TabBar
@@ -503,6 +568,14 @@ function PDFApp({ initialFilePath }: { initialFilePath: string | null }) {
         zoom={state.zoom}
         fileName={state.fileName}
       />
+
+      {extractionProgress && (
+        <ExtractionProgressModal
+          progress={extractionProgress}
+          onCancel={handleCancelExtract}
+          onClose={handleCloseExtractModal}
+        />
+      )}
     </div>
   );
 }

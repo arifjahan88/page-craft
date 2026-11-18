@@ -15,9 +15,12 @@ import {
   Search,
   X,
   Loader,
+  Printer,
+  Download,
 } from "lucide-react";
 import { useTheme } from "../hooks/useTheme";
 import type { SearchState } from "../hooks/usePDF";
+import type { ImageFormat } from "../utils/pdfExtractor";
 import styles from "./Toolbar.module.css";
 
 interface ToolbarProps {
@@ -44,6 +47,9 @@ interface ToolbarProps {
   onSearch: (query: string) => void;
   onNextMatch: () => void;
   onPrevMatch: () => void;
+  onPrint: () => void;
+  onExtract: (format: ImageFormat) => void;
+  isExtracting?: boolean;
 }
 
 export function Toolbar({
@@ -70,15 +76,39 @@ export function Toolbar({
   onSearch,
   onNextMatch,
   onPrevMatch,
+  onPrint,
+  onExtract,
+  isExtracting = false,
 }: ToolbarProps) {
   const { theme, toggleTheme } = useTheme();
   const [pageInput, setPageInput] = useState("");
   const [zoomInput, setZoomInput] = useState("");
   const [editingPage, setEditingPage] = useState(false);
   const [editingZoom, setEditingZoom] = useState(false);
+  const [showExtractMenu, setShowExtractMenu] = useState(false);
   const pageRef = useRef<HTMLInputElement>(null);
   const zoomRef = useRef<HTMLInputElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const extractMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close extract dropdown on outside click or Escape
+  useEffect(() => {
+    if (!showExtractMenu) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (extractMenuRef.current && !extractMenuRef.current.contains(e.target as Node)) {
+        setShowExtractMenu(false);
+      }
+    };
+    const handleKeyDown = (e: globalThis.KeyboardEvent) => {
+      if (e.key === "Escape") setShowExtractMenu(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [showExtractMenu]);
 
   useEffect(() => {
     if (searchState.isOpen) {
@@ -339,8 +369,79 @@ export function Toolbar({
         </div>
       )}
 
-      {/* ── Right: Theme toggle ── */}
+      {/* ── Right: Print + Extract + Theme toggle ── */}
       <div className={styles.section} style={{ justifyContent: "flex-end" }}>
+        {isLoaded && (
+          <>
+            <button className={styles.iconBtn} onClick={onPrint} title="Print document (Ctrl+P)">
+              <Printer size={15} strokeWidth={2} />
+            </button>
+
+            <div className={styles.extractContainer} ref={extractMenuRef}>
+              <button
+                className={`${styles.extractBtn} ${showExtractMenu ? styles.extractBtnActive : ""}`}
+                onClick={() => setShowExtractMenu((v) => !v)}
+                disabled={isExtracting}
+                title="Extract all pages as images"
+              >
+                <Download size={14} strokeWidth={2} />
+                <span className={styles.btnLabel}>Extract</span>
+                <ChevronDown size={11} strokeWidth={2.5} />
+              </button>
+
+              {showExtractMenu && (
+                <div className={styles.extractMenu}>
+                  <div className={styles.extractMenuHeader}>Extract Pages As</div>
+                  <button
+                    className={styles.extractMenuItem}
+                    onClick={() => {
+                      setShowExtractMenu(false);
+                      onExtract("png");
+                    }}
+                    type="button"
+                  >
+                    <div className={styles.formatBadge}>PNG</div>
+                    <div className={styles.formatInfo}>
+                      <span className={styles.formatName}>PNG Images (.png)</span>
+                      <span className={styles.formatDesc}>Lossless quality, sharpest text</span>
+                    </div>
+                  </button>
+                  <button
+                    className={styles.extractMenuItem}
+                    onClick={() => {
+                      setShowExtractMenu(false);
+                      onExtract("jpeg");
+                    }}
+                    type="button"
+                  >
+                    <div className={styles.formatBadge}>JPG</div>
+                    <div className={styles.formatInfo}>
+                      <span className={styles.formatName}>JPG Images (.jpg)</span>
+                      <span className={styles.formatDesc}>Smaller size, photo quality</span>
+                    </div>
+                  </button>
+                  <button
+                    className={styles.extractMenuItem}
+                    onClick={() => {
+                      setShowExtractMenu(false);
+                      onExtract("webp");
+                    }}
+                    type="button"
+                  >
+                    <div className={styles.formatBadge}>WEBP</div>
+                    <div className={styles.formatInfo}>
+                      <span className={styles.formatName}>WebP Images (.webp)</span>
+                      <span className={styles.formatDesc}>Modern lightweight web format</span>
+                    </div>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className={styles.divider} />
+          </>
+        )}
+
         <button
           className={styles.themeBtn}
           onClick={toggleTheme}
