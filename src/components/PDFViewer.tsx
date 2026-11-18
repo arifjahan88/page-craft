@@ -1,19 +1,19 @@
-import {
-  useRef,
-  useEffect,
-  useCallback,
-  RefObject,
-  forwardRef,
-  type MutableRefObject,
-} from "react";
+import { useRef, useEffect, useCallback, useState, forwardRef, type MutableRefObject } from "react";
+import * as pdfjsLib from "pdfjs-dist";
 import { type RecentFile } from "../hooks/useRecents";
+import { applyHighlights } from "../hooks/usePDF";
+import { UploadCloud, FileText } from "lucide-react";
 import styles from "./PDFViewer.module.css";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface PDFViewerProps {
-  canvasRef: RefObject<HTMLCanvasElement>;
-  textLayerRef: RefObject<HTMLDivElement>;
+  doc: pdfjsLib.PDFDocumentProxy | null;
+  totalPages: number;
+  currentPage: number;
+  onGoToPage: (page: number) => void;
+  searchQuery?: string;
+  isDraggingOver?: boolean;
   isLoaded: boolean;
   isLoading: boolean;
   initializing: boolean;
@@ -34,8 +34,12 @@ interface PDFViewerProps {
 
 export const PDFViewer = forwardRef<HTMLDivElement, PDFViewerProps>(function PDFViewer(
   {
-    canvasRef,
-    textLayerRef,
+    doc,
+    totalPages,
+    currentPage,
+    onGoToPage,
+    searchQuery = "",
+    isDraggingOver = false,
     isLoaded,
     isLoading,
     initializing,
@@ -56,6 +60,8 @@ export const PDFViewer = forwardRef<HTMLDivElement, PDFViewerProps>(function PDF
   const containerRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
   const dragStart = useRef({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 });
+  const isUserScrollingRef = useRef(false);
+  const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Ctrl+Scroll to zoom ───────────────────────────────────────────────────
 
@@ -78,23 +84,21 @@ export const PDFViewer = forwardRef<HTMLDivElement, PDFViewerProps>(function PDF
 
   // ── Drag to pan ───────────────────────────────────────────────────────────
 
-  const handleMouseDown = useCallback(
-    (e: React.MouseEvent) => {
-      if (e.button !== 0) return;
-      const el = containerRef.current;
-      if (!el) return;
-      if (textLayerRef.current?.contains(e.target as Node)) return;
-      isDragging.current = true;
-      dragStart.current = {
-        x: e.clientX,
-        y: e.clientY,
-        scrollLeft: el.scrollLeft,
-        scrollTop: el.scrollTop,
-      };
-      el.style.cursor = "grabbing";
-    },
-    [textLayerRef]
-  );
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (e.button !== 0) return;
+    const el = containerRef.current;
+    if (!el) return;
+    // Don't drag if clicking inside text selection layer
+    if ((e.target as HTMLElement).closest(`.${styles.textLayer}`)) return;
+    isDragging.current = true;
+    dragStart.current = {
+      x: e.clientX,
+      y: e.clientY,
+      scrollLeft: el.scrollLeft,
+      scrollTop: el.scrollTop,
+    };
+    el.style.cursor = "grabbing";
+  }, []);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (!isDragging.current) return;
@@ -187,70 +191,115 @@ export const PDFViewer = forwardRef<HTMLDivElement, PDFViewerProps>(function PDF
 
   // ── Copy: sort text nodes by visual position ──────────────────────────────
 
-  const handleCopy = useCallback(
-    (e: React.ClipboardEvent) => {
-      const selection = window.getSelection();
-      if (!selection || selection.isCollapsed || selection.rangeCount === 0) return;
+  const handleCopy = useCallback((e: React.ClipboardEvent) => {
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed || selection.rangeCount === 0) return;
 
-      const range = selection.getRangeAt(0);
-      const container = textLayerRef.current;
-      if (!container) return;
+    const range = selection.getRangeAt(0);
+    const container = (range.commonAncestorContainer as HTMLElement).closest(
+      `.${styles.textLayer}`
+    );
+    if (!container) return;
 
-      const walker = document.createTreeWalker(
-        range.commonAncestorContainer,
-        NodeFilter.SHOW_TEXT,
-        {
-          acceptNode: (node) => {
-            if (!range.intersectsNode(node)) return NodeFilter.FILTER_REJECT;
-            if (!container.contains(node)) return NodeFilter.FILTER_REJECT;
-            return NodeFilter.FILTER_ACCEPT;
-          },
-        }
-      );
+    const walker = document.createTreeWalker(range.commonAncestorContainer, NodeFilter.SHOW_TEXT, {
+      acceptNode: (node) => {
+        if (!range.intersectsNode(node)) return NodeFilter.FILTER_REJECT;
+        if (!container.contains(node)) return NodeFilter.FILTER_REJECT;
+        return NodeFilter.FILTER_ACCEPT;
+      },
+    });
 
-      const nodes: { text: string; rect: DOMRect }[] = [];
-      let node: Node | null;
-      while ((node = walker.nextNode())) {
-        const span = node.parentElement;
-        if (!span) continue;
-        const rect = span.getBoundingClientRect();
-        if (rect.width === 0 && rect.height === 0) continue;
-        nodes.push({ text: node.textContent ?? "", rect });
+    const nodes: { text: string; rect: DOMRect }[] = [];
+    let node: Node | null;
+    while ((node = walker.nextNode())) {
+      const span = node.parentElement;
+      if (!span) continue;
+      const rect = span.getBoundingClientRect();
+      if (rect.width === 0 && rect.height === 0) continue;
+      nodes.push({ text: node.textContent ?? "", rect });
+    }
+
+    if (nodes.length === 0) return;
+
+    nodes.sort((a, b) => {
+      const yDiff = a.rect.top - b.rect.top;
+      if (Math.abs(yDiff) > 5) return yDiff;
+      return a.rect.left - b.rect.left;
+    });
+
+    let result = "";
+    for (let i = 0; i < nodes.length; i++) {
+      if (i === 0) {
+        result += nodes[i].text;
+        continue;
       }
-
-      if (nodes.length === 0) return;
-
-      nodes.sort((a, b) => {
-        const yDiff = a.rect.top - b.rect.top;
-        if (Math.abs(yDiff) > 5) return yDiff;
-        return a.rect.left - b.rect.left;
-      });
-
-      let result = "";
-      for (let i = 0; i < nodes.length; i++) {
-        if (i === 0) {
-          result += nodes[i].text;
-          continue;
-        }
-        const prev = nodes[i - 1].rect;
-        const curr = nodes[i].rect;
-        const newLine = curr.top - prev.bottom > 2;
-        const hasGap = curr.left - prev.right > 3;
-        if (newLine) {
-          result += "\n" + nodes[i].text;
-        } else if (hasGap && !result.endsWith(" ") && !nodes[i].text.startsWith(" ")) {
-          result += " " + nodes[i].text;
-        } else {
-          result += nodes[i].text;
-        }
+      const prev = nodes[i - 1].rect;
+      const curr = nodes[i].rect;
+      const newLine = curr.top - prev.bottom > 2;
+      const hasGap = curr.left - prev.right > 3;
+      if (newLine) {
+        result += "\n" + nodes[i].text;
+      } else if (hasGap && !result.endsWith(" ") && !nodes[i].text.startsWith(" ")) {
+        result += " " + nodes[i].text;
+      } else {
+        result += nodes[i].text;
       }
+    }
 
-      if (!result.trim()) return;
-      e.clipboardData.setData("text/plain", result);
-      e.preventDefault();
-    },
-    [textLayerRef]
-  );
+    if (!result.trim()) return;
+    e.clipboardData.setData("text/plain", result);
+    e.preventDefault();
+  }, []);
+
+  // ── Continuous Scroll: Synchronize Current Page with Viewport ──────────────
+
+  const handleScroll = useCallback(() => {
+    if (!containerRef.current) return;
+    isUserScrollingRef.current = true;
+    if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+    scrollTimeoutRef.current = setTimeout(() => {
+      isUserScrollingRef.current = false;
+    }, 250);
+
+    const container = containerRef.current;
+    const containerTop = container.scrollTop;
+    const pageEls = container.querySelectorAll<HTMLElement>("[data-page-number]");
+    if (pageEls.length === 0) return;
+
+    let closestPage = 1;
+    let minDistance = Infinity;
+
+    pageEls.forEach((el) => {
+      const pageNum = parseInt(el.dataset.pageNumber || "1", 10);
+      const offsetTop = el.offsetTop - container.offsetTop;
+      const distance = Math.abs(offsetTop - containerTop - 40);
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestPage = pageNum;
+      }
+    });
+
+    if (closestPage !== currentPage) {
+      onGoToPage(closestPage);
+    }
+  }, [currentPage, onGoToPage]);
+
+  // ── Smooth Scroll when Target Page is selected externally ──────────────────
+
+  useEffect(() => {
+    if (!containerRef.current || isUserScrollingRef.current) return;
+    const targetEl = containerRef.current.querySelector<HTMLElement>(
+      `[data-page-number="${currentPage}"]`
+    );
+    if (targetEl) {
+      const container = containerRef.current;
+      const targetTop = targetEl.offsetTop - container.offsetTop - 24;
+      const diff = Math.abs(container.scrollTop - targetTop);
+      if (diff > 50) {
+        container.scrollTo({ top: targetTop, behavior: "smooth" });
+      }
+    }
+  }, [currentPage]);
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -266,7 +315,17 @@ export const PDFViewer = forwardRef<HTMLDivElement, PDFViewerProps>(function PDF
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
+      onScroll={handleScroll}
     >
+      {/* ── Drag Overlay ── */}
+      {isDraggingOver && (
+        <div className={styles.dragOverlay}>
+          <UploadCloud size={44} strokeWidth={1.8} color="var(--accent)" />
+          <h3 className={styles.dragOverlayTitle}>Drop PDF files here</h3>
+          <p className={styles.dragOverlaySub}>Open up to 10 files simultaneously</p>
+        </div>
+      )}
+
       {/* ── Initializing / Empty ── */}
       {!isLoaded &&
         !isLoading &&
@@ -288,33 +347,220 @@ export const PDFViewer = forwardRef<HTMLDivElement, PDFViewerProps>(function PDF
       {/* ── Error ── */}
       {!isLoaded && !!error && <ErrorState message={error} onRetry={onOpenFile} />}
 
-      {/* ── PDF Canvas + Text Layer ── */}
-      {(isLoaded || isLoading) && (
-        <div className={styles.canvasWrap}>
-          <div className={styles.pageShadow}>
-            <div
-              style={{
-                position: "relative",
-                lineHeight: 0,
-                overflow: "visible",
-              }}
-            >
-              <canvas
-                ref={canvasRef}
-                className={styles.canvas}
-                style={{
-                  opacity: isLoading || !isLoaded ? 0 : 1,
-                  transition: "opacity 150ms ease",
-                }}
-              />
-              <div ref={textLayerRef} className={styles.textLayer} onCopy={handleCopy} />
-            </div>
-          </div>
+      {/* ── Document Continuous Scroll View ── */}
+      {isLoaded && !isLoading && doc && (
+        <div className={styles.continuousContainer}>
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+            <ContinuousPage
+              key={`${doc.loadingTask.docId}-${pageNum}`}
+              doc={doc}
+              pageNum={pageNum}
+              zoom={zoom}
+              searchQuery={searchQuery}
+              onCopy={handleCopy}
+            />
+          ))}
         </div>
       )}
     </div>
   );
 });
+
+// ─── Continuous Page Component ───────────────────────────────────────────────
+
+function ContinuousPage({
+  doc,
+  pageNum,
+  zoom,
+  searchQuery,
+  onCopy,
+}: {
+  doc: pdfjsLib.PDFDocumentProxy;
+  pageNum: number;
+  zoom: number;
+  searchQuery: string;
+  onCopy: (e: React.ClipboardEvent) => void;
+}) {
+  const pageWrapRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const textLayerRef = useRef<HTMLDivElement>(null);
+
+  const [isVisible, setIsVisible] = useState(false);
+  const [aspectRatio, setAspectRatio] = useState<number>(0.707); // Default A4 ratio
+  const [pageSize, setPageSize] = useState<{ width: number; height: number } | null>(null);
+  const renderTaskRef = useRef<pdfjsLib.RenderTask | null>(null);
+
+  // ── Measure page dimensions once ──────────────────────────────────────────
+  useEffect(() => {
+    let active = true;
+    doc
+      .getPage(pageNum)
+      .then((page) => {
+        if (!active) return;
+        const vp = page.getViewport({ scale: 1.0 });
+        setAspectRatio(vp.width / vp.height);
+        setPageSize({ width: vp.width, height: vp.height });
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [doc, pageNum]);
+
+  // ── Intersection Observer for lazy rendering ──────────────────────────────
+  useEffect(() => {
+    const el = pageWrapRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsVisible(entry.isIntersecting);
+      },
+      {
+        rootMargin: "650px 0px 650px 0px", // Preload pages within 650px of viewport
+        threshold: 0.01,
+      }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  // ── Render page when visible ──────────────────────────────────────────────
+  useEffect(() => {
+    if (!isVisible) {
+      if (renderTaskRef.current) {
+        renderTaskRef.current.cancel();
+        renderTaskRef.current = null;
+      }
+      return;
+    }
+
+    let active = true;
+
+    async function render() {
+      try {
+        const page = await doc.getPage(pageNum);
+        if (!active) return;
+
+        const dpr = window.devicePixelRatio || 1;
+        const viewport = page.getViewport({ scale: zoom * dpr });
+        const canvas = canvasRef.current;
+        const textLayer = textLayerRef.current;
+        if (!canvas) return;
+
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        canvas.style.width = `${viewport.width / dpr}px`;
+        canvas.style.height = `${viewport.height / dpr}px`;
+
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+
+        if (renderTaskRef.current) {
+          renderTaskRef.current.cancel();
+          renderTaskRef.current = null;
+        }
+
+        const task = page.render({ canvasContext: ctx, viewport });
+        renderTaskRef.current = task;
+        await task.promise;
+        renderTaskRef.current = null;
+
+        if (!active || !textLayer) return;
+
+        // Render text layer
+        const cssWidth = viewport.width / dpr;
+        const cssHeight = viewport.height / dpr;
+        const baseViewport = page.getViewport({ scale: 1.0 });
+        const scale = cssWidth / baseViewport.width;
+        const textVp = page.getViewport({ scale });
+        const textContent = await page.getTextContent();
+
+        if (!active) return;
+
+        textLayer.innerHTML = "";
+        textLayer.style.width = `${cssWidth}px`;
+        textLayer.style.height = `${cssHeight}px`;
+
+        const tl = new pdfjsLib.TextLayer({
+          textContentSource: textContent,
+          container: textLayer,
+          viewport: textVp,
+        });
+        await tl.render();
+        textLayer.style.setProperty("--scale-factor", String(scale));
+
+        if (searchQuery) {
+          applyHighlights(textLayer, searchQuery);
+        }
+      } catch (err: unknown) {
+        const isCancelled =
+          err instanceof Error &&
+          (err.message.includes("cancelled") || err.message.includes("canceled"));
+        if (!isCancelled) console.error(`Error rendering page ${pageNum}:`, err);
+      }
+    }
+
+    render();
+
+    return () => {
+      active = false;
+      if (renderTaskRef.current) {
+        renderTaskRef.current.cancel();
+        renderTaskRef.current = null;
+      }
+    };
+  }, [isVisible, doc, pageNum, zoom, searchQuery]);
+
+  const computedWidth = pageSize ? pageSize.width * zoom : 600 * zoom;
+  const computedHeight = pageSize ? pageSize.height * zoom : computedWidth / aspectRatio;
+
+  return (
+    <div
+      ref={pageWrapRef}
+      data-page-number={pageNum}
+      className={styles.continuousPageWrap}
+      style={{
+        width: `${computedWidth}px`,
+        minHeight: `${computedHeight}px`,
+      }}
+    >
+      <span className={styles.pageNumberTag}>Page {pageNum}</span>
+      <div
+        className={styles.pageShadow}
+        style={{
+          width: `${computedWidth}px`,
+          height: `${computedHeight}px`,
+        }}
+      >
+        <div style={{ position: "relative", lineHeight: 0, width: "100%", height: "100%" }}>
+          <canvas
+            ref={canvasRef}
+            className={styles.canvas}
+            style={{
+              display: isVisible ? "block" : "none",
+            }}
+          />
+          <div
+            ref={textLayerRef}
+            className={styles.textLayer}
+            onCopy={onCopy}
+            style={{
+              display: isVisible ? "block" : "none",
+            }}
+          />
+          {!isVisible && (
+            <div
+              className={styles.continuousPlaceholder}
+              style={{ width: `${computedWidth}px`, height: `${computedHeight}px` }}
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 

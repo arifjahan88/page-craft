@@ -56,7 +56,7 @@ const INITIAL_SEARCH_STATE: SearchState = {
 
 // ─── Text highlight helpers ───────────────────────────────────────────────────
 
-function applyHighlights(container: HTMLDivElement, query: string) {
+export function applyHighlights(container: HTMLDivElement, query: string) {
   const spans = Array.from(container.querySelectorAll<HTMLSpanElement>("span"));
 
   // Clear all previous highlights first
@@ -107,7 +107,7 @@ function applyHighlights(container: HTMLDivElement, query: string) {
   }
 }
 
-function clearHighlights(container: HTMLDivElement) {
+export function clearHighlights(container: HTMLDivElement) {
   container.querySelectorAll<HTMLSpanElement>("span[data-highlight]").forEach((span) => {
     span.style.removeProperty("background-color");
     span.style.removeProperty("color");
@@ -198,6 +198,7 @@ export function usePDF(
       const startPage = saved ? Math.min(Math.max(1, parseInt(saved) || 1), doc.numPages) : 1;
 
       setState((s) => ({
+        ...s,
         isLoaded: true,
         isLoading: false,
         error: null,
@@ -642,6 +643,7 @@ export function usePDF(
   return {
     // PDF state
     state,
+    doc: docRef.current,
     loadPDF,
     resetPDF,
     // Navigation
