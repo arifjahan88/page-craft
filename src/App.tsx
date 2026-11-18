@@ -8,7 +8,12 @@ import { Toolbar } from "./components/Toolbar";
 import { TabBar } from "./components/TabBar";
 import { PDFViewer } from "./components/PDFViewer";
 import { StatusBar } from "./components/StatusBar";
-import { SearchBar } from "./components/SearchBar";
+import {
+  savePDFBuffer,
+  getPDFBuffer,
+  deletePDFBuffer,
+  clearAllPDFBuffers,
+} from "./utils/pdfStorage";
 import styles from "./App.module.css";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -41,10 +46,12 @@ function PDFApp({ initialFilePath }: { initialFilePath: string | null }) {
   // ── State ──────────────────────────────────────────────────────────────────
   // true while the initial double-click file is loading — keeps spinner visible
   const [pendingFile, setPendingFile] = useState(initialFilePath !== null);
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
 
   // ── Hooks ──────────────────────────────────────────────────────────────────
   const {
     state,
+    doc,
     loadPDF,
     resetPDF,
     goToPage,
@@ -65,9 +72,34 @@ function PDFApp({ initialFilePath }: { initialFilePath: string | null }) {
     goToPrevMatch,
   } = usePDF(canvasRef, textLayerRef);
 
-  const { recents, addRecent, updateRecentPage, removeRecent } = useRecents();
-  const { tabs, activeId, openTab, activateTab, closeTab, saveTabState } =
-    useTabs();
+  const {
+    recents,
+    addRecent,
+    updateRecentPage,
+    removeRecent,
+    clearAllRecents,
+  } = useRecents();
+  const {
+    tabs,
+    activeId,
+    openTab,
+    activateTab,
+    closeTab,
+    closeAllTabs,
+    saveTabState,
+  } = useTabs();
+
+  // ── Go Home: close all open files/tabs and return to home screen ─────────
+  const handleGoHome = useCallback(async () => {
+    closeAllTabs();
+    await resetPDF();
+  }, [closeAllTabs, resetPDF]);
+
+  // ── Clear all recents & storage ──────────────────────────────────────────
+  const handleClearAllRecents = useCallback(async () => {
+    clearAllRecents();
+    await clearAllPDFBuffers();
+  }, [clearAllRecents]);
 
   // ── Dismiss spinner only after PDF is confirmed loaded or errored ──────────
   useEffect(() => {
@@ -92,43 +124,84 @@ function PDFApp({ initialFilePath }: { initialFilePath: string | null }) {
     updateRecentPage,
   ]);
 
-  // ── Core loader: buffer → tab → PDF ────────────────────────────────────────
-  const loadBuffer = useCallback(
-    async (buffer: ArrayBuffer, fileName: string, filePath: string) => {
-      const { tab, isNew } = openTab(fileName, filePath, buffer);
-      activateTab(tab.id);
+  // ── Core loader: multiple buffers → tabs → active PDF ──────────────────────
+  const loadMultipleBuffers = useCallback(
+    async (
+      items: Array<{ buffer: ArrayBuffer; fileName: string; filePath: string }>
+    ) => {
+      if (items.length === 0) return;
+      const capped = items.slice(0, 10);
+      let targetTabId: string | null = null;
+      let targetBuffer: ArrayBuffer | null = null;
+      let targetFileName: string | null = null;
+      let targetSavedPage = 1;
+      let targetSavedZoom = 1.0;
+      let isExistingTab = false;
 
-      if (!isNew) {
-        // File already open in a tab — restore saved position
+      for (let i = 0; i < capped.length; i++) {
+        const item = capped[i];
+        const { tab, isNew } = openTab(item.fileName, item.filePath, item.buffer);
+        if (i === 0) {
+          targetTabId = tab.id;
+          targetBuffer = tab.buffer;
+          targetFileName = tab.fileName;
+          targetSavedPage = tab.savedPage;
+          targetSavedZoom = tab.savedZoom;
+          isExistingTab = !isNew;
+        }
+        if (isNew) {
+          addRecent({ fileName: item.fileName, filePath: item.filePath, lastPage: 1, totalPages: 0 });
+        }
+        // Persist buffer to IndexedDB for persistent recents in browser
+        savePDFBuffer(item.fileName, item.buffer);
+      }
+
+      if (targetTabId && targetBuffer && targetFileName) {
+        activateTab(targetTabId);
         switchingRef.current = true;
-        await loadPDF(tab.buffer.slice(0), tab.fileName);
-        goToPage(tab.savedPage);
-        setZoom(tab.savedZoom);
+        await loadPDF(targetBuffer.slice(0), targetFileName);
+        if (isExistingTab) {
+          goToPage(targetSavedPage);
+          setZoom(targetSavedZoom);
+        }
         switchingRef.current = false;
-      } else {
-        // New tab — load fresh
-        await loadPDF(buffer.slice(0), fileName);
-        addRecent({ fileName, filePath, lastPage: 1, totalPages: 0 });
       }
     },
-    [openTab, activateTab, loadPDF, goToPage, setZoom, addRecent],
+    [openTab, activateTab, loadPDF, goToPage, setZoom, addRecent]
   );
 
-  // ── Load from OS file path via Rust command ────────────────────────────────
-  const loadFromPath = useCallback(
-    async (filePath: string, fileName: string) => {
+  // ── Load multiple files from OS file paths ─────────────────────────────────
+  const loadMultiplePaths = useCallback(
+    async (filePaths: string[]) => {
+      if (filePaths.length === 0) return;
+      const capped = filePaths.slice(0, 10);
       try {
         const { invoke } = await import("@tauri-apps/api/core");
-        const base64 = await invoke<string>("read_pdf_file", {
-          path: filePath,
-        });
-        await loadBuffer(base64ToBuffer(base64), fileName, filePath);
+        const items: Array<{ buffer: ArrayBuffer; fileName: string; filePath: string }> = [];
+        for (const path of capped) {
+          const fileName = path.split(/[/\\]/).pop() ?? "document.pdf";
+          const base64 = await invoke<string>("read_pdf_file", { path });
+          items.push({
+            buffer: base64ToBuffer(base64),
+            fileName,
+            filePath: path,
+          });
+        }
+        await loadMultipleBuffers(items);
       } catch (err) {
-        console.error("Failed to open file:", err);
+        console.error("Failed to open files from paths:", err);
         setPendingFile(false);
       }
     },
-    [loadBuffer],
+    [loadMultipleBuffers]
+  );
+
+  // ── Load from single path ──────────────────────────────────────────────────
+  const loadFromPath = useCallback(
+    async (filePath: string, _fileName?: string) => {
+      await loadMultiplePaths([filePath]);
+    },
+    [loadMultiplePaths]
   );
 
   // ── Load initial file passed via double-click (once on mount) ─────────────
@@ -155,44 +228,117 @@ function PDFApp({ initialFilePath }: { initialFilePath: string | null }) {
     }
   }, [pendingFile]);
 
-  // ── Open via OS file dialog ────────────────────────────────────────────────
+  // ── Open via OS file dialog (Multi-file support, up to 10) ─────────────────
   const handleOpenFile = useCallback(async () => {
     if (IS_TAURI) {
       try {
         const { open } = await import("@tauri-apps/plugin-dialog");
         const selected = await open({
-          multiple: false,
+          multiple: true,
           filters: [{ name: "PDF Documents", extensions: ["pdf"] }],
         });
-        if (!selected || typeof selected !== "string") return;
-        const fileName = selected.split(/[/\\]/).pop() ?? "document.pdf";
-        await loadFromPath(selected, fileName);
+        if (!selected) return;
+        const paths = (Array.isArray(selected) ? selected : [selected]).slice(0, 10);
+        await loadMultiplePaths(paths);
       } catch (err) {
         console.error("Tauri file open error:", err);
       }
     } else {
       const input = document.createElement("input");
       input.type = "file";
+      input.multiple = true;
       input.accept = "application/pdf,.pdf";
       input.onchange = async () => {
-        const file = input.files?.[0];
-        if (!file) return;
-        await loadBuffer(await file.arrayBuffer(), file.name, "");
+        const fileList = Array.from(input.files || []).slice(0, 10);
+        if (fileList.length === 0) return;
+        const items = await Promise.all(
+          fileList.map(async (file) => ({
+            buffer: await file.arrayBuffer(),
+            fileName: file.name,
+            filePath: "",
+          }))
+        );
+        await loadMultipleBuffers(items);
       };
       input.click();
     }
-  }, [loadFromPath, loadBuffer]);
+  }, [loadMultiplePaths, loadMultipleBuffers]);
+
+  // ── Drag & Drop file handling (up to 10 files) ──────────────────────────────
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer.types.includes("Files")) {
+      setIsDraggingOver(true);
+    }
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+    setIsDraggingOver(false);
+  }, []);
+
+  const handleDrop = useCallback(
+    async (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDraggingOver(false);
+
+      const files = Array.from(e.dataTransfer.files || [])
+        .filter(
+          (f) => f.name.toLowerCase().endsWith(".pdf") || f.type === "application/pdf"
+        )
+        .slice(0, 10);
+
+      if (files.length === 0) return;
+
+      const items = await Promise.all(
+        files.map(async (f) => ({
+          buffer: await f.arrayBuffer(),
+          fileName: f.name,
+          filePath: (f as unknown as { path?: string }).path || "",
+        }))
+      );
+      await loadMultipleBuffers(items);
+    },
+    [loadMultipleBuffers]
+  );
 
   // ── Re-open from recents ───────────────────────────────────────────────────
   const handleOpenRecent = useCallback(
     async (filePath: string, fileName: string) => {
+      // 1. In Tauri with full file path: read from filesystem
       if (IS_TAURI && filePath) {
-        await loadFromPath(filePath, fileName);
-      } else {
-        handleOpenFile();
+        try {
+          await loadFromPath(filePath, fileName);
+          return;
+        } catch (err) {
+          console.warn("Failed to load from path, falling back to cached buffer:", err);
+        }
       }
+
+      // 2. Check IndexedDB cached buffer (browser mode / offline persistence)
+      const cachedBuffer = await getPDFBuffer(fileName);
+      if (cachedBuffer) {
+        await loadMultipleBuffers([{ buffer: cachedBuffer, fileName, filePath }]);
+        return;
+      }
+
+      // 3. Fallback: prompt to pick file if buffer was cleared from cache
+      handleOpenFile();
     },
-    [loadFromPath, handleOpenFile],
+    [loadFromPath, loadMultipleBuffers, handleOpenFile],
+  );
+
+  // ── Remove from recents and delete cached buffer ───────────────────────────
+  const handleRemoveRecent = useCallback(
+    (fileName: string) => {
+      removeRecent(fileName);
+      deletePDFBuffer(fileName);
+    },
+    [removeRecent]
   );
 
   // ── Switch to an existing tab ──────────────────────────────────────────────
@@ -285,7 +431,12 @@ function PDFApp({ initialFilePath }: { initialFilePath: string | null }) {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className={styles.app}>
+    <div
+      className={styles.app}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
       <Toolbar
         isLoaded={state.isLoaded}
         fileName={state.fileName}
@@ -294,6 +445,8 @@ function PDFApp({ initialFilePath }: { initialFilePath: string | null }) {
         zoom={state.zoom}
         zoomMin={ZOOM_MIN}
         zoomMax={ZOOM_MAX}
+        searchState={searchState}
+        onGoHome={handleGoHome}
         onOpenFile={handleOpenFile}
         onPrevPage={prevPage}
         onNextPage={nextPage}
@@ -304,6 +457,10 @@ function PDFApp({ initialFilePath }: { initialFilePath: string | null }) {
         onZoomSet={setZoom}
         onFitToWidth={handleFitToWidth}
         onOpenSearch={openSearch}
+        onCloseSearch={closeSearch}
+        onSearch={searchPDF}
+        onNextMatch={goToNextMatch}
+        onPrevMatch={goToPrevMatch}
       />
 
       <TabBar
@@ -314,23 +471,14 @@ function PDFApp({ initialFilePath }: { initialFilePath: string | null }) {
         onNewTab={handleOpenFile}
       />
 
-      {searchState.isOpen && (
-        <SearchBar
-          query={searchState.query}
-          results={searchState.results}
-          currentIndex={searchState.currentIndex}
-          isSearching={searchState.isSearching}
-          onSearch={searchPDF}
-          onNext={goToNextMatch}
-          onPrev={goToPrevMatch}
-          onClose={closeSearch}
-        />
-      )}
-
       <PDFViewer
         ref={containerRef}
-        canvasRef={canvasRef}
-        textLayerRef={textLayerRef}
+        doc={doc}
+        totalPages={state.totalPages}
+        currentPage={state.currentPage}
+        onGoToPage={goToPage}
+        searchQuery={searchState.query}
+        isDraggingOver={isDraggingOver}
         isLoaded={state.isLoaded}
         isLoading={state.isLoading}
         initializing={pendingFile}
@@ -344,7 +492,8 @@ function PDFApp({ initialFilePath }: { initialFilePath: string | null }) {
         onPrevPage={prevPage}
         recents={recents}
         onOpenRecent={handleOpenRecent}
-        onRemoveRecent={removeRecent}
+        onRemoveRecent={handleRemoveRecent}
+        onClearAllRecents={handleClearAllRecents}
       />
 
       <StatusBar
