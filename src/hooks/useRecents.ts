@@ -11,7 +11,7 @@ export interface RecentFile {
 }
 
 const LS_KEY = "pdfr:recents";
-const MAX_RECENTS = 5;
+const MAX_RECENTS = 10;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -73,5 +73,20 @@ export function useRecents() {
     });
   }, []);
 
-  return { recents, addRecent, updateRecentPage, removeRecent };
+  const clearAllRecents = useCallback(() => {
+    setRecents([]);
+    try {
+      localStorage.removeItem(LS_KEY);
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith("pdfr:page:")) {
+          localStorage.removeItem(key);
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  return { recents, addRecent, updateRecentPage, removeRecent, clearAllRecents };
 }

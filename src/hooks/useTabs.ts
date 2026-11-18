@@ -61,6 +61,12 @@ export function useTabs() {
     [rerender]
   );
 
+  const deactivateTab = useCallback(() => {
+    if (activeIdRef.current === null) return;
+    activeIdRef.current = null;
+    rerender();
+  }, [rerender]);
+
   // ── Close — returns next tab to show, or null if none remain ──────────────
   const closeTab = useCallback(
     (id: string, wasActive: boolean): Tab | null => {
@@ -89,6 +95,13 @@ export function useTabs() {
     [rerender]
   );
 
+  // ── Close all tabs ────────────────────────────────────────────────────────
+  const closeAllTabs = useCallback(() => {
+    tabsRef.current = [];
+    activeIdRef.current = null;
+    rerender();
+  }, [rerender]);
+
   // ── Persist page/zoom into a tab ──────────────────────────────────────────
   const saveTabState = useCallback(
     (id: string, savedPage: number, savedZoom: number, totalPages: number) => {
@@ -100,5 +113,14 @@ export function useTabs() {
     []
   );
 
-  return { tabs, activeId, openTab, activateTab, closeTab, saveTabState };
+  return {
+    tabs,
+    activeId,
+    openTab,
+    activateTab,
+    deactivateTab,
+    closeTab,
+    closeAllTabs,
+    saveTabState,
+  };
 }
