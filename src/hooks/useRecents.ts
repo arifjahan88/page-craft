@@ -73,6 +73,15 @@ export function useRecents() {
     });
   }, []);
 
+  const removeMultipleRecents = useCallback((fileNames: string[]) => {
+    const set = new Set(fileNames);
+    setRecents((prev) => {
+      const updated = prev.filter((r) => !set.has(r.fileName));
+      saveToStorage(updated);
+      return updated;
+    });
+  }, []);
+
   const clearAllRecents = useCallback(() => {
     setRecents([]);
     try {
@@ -88,5 +97,12 @@ export function useRecents() {
     }
   }, []);
 
-  return { recents, addRecent, updateRecentPage, removeRecent, clearAllRecents };
+  return {
+    recents,
+    addRecent,
+    updateRecentPage,
+    removeRecent,
+    removeMultipleRecents,
+    clearAllRecents,
+  };
 }

@@ -2,7 +2,8 @@ import { useRef, useEffect, useCallback, useState, forwardRef, type MutableRefOb
 import * as pdfjsLib from "pdfjs-dist";
 import { type RecentFile } from "../hooks/useRecents";
 import { applyHighlights } from "../hooks/usePDF";
-import { UploadCloud, FileText, FolderOpen } from "lucide-react";
+import { UploadCloud, FileText, FolderOpen, Check, CheckSquare, Trash2 } from "lucide-react";
+import { ConfirmModal } from "./ConfirmModal";
 import styles from "./PDFViewer.module.css";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -27,7 +28,9 @@ interface PDFViewerProps {
   onPrevPage: () => void;
   recents: RecentFile[];
   onOpenRecent: (filePath: string, fileName: string) => void;
+  onOpenMultipleRecents?: (selected: RecentFile[]) => void;
   onRemoveRecent: (fileName: string) => void;
+  onRemoveMultipleRecents?: (fileNames: string[]) => void;
   onClearAllRecents: () => void;
 }
 
@@ -54,7 +57,9 @@ export const PDFViewer = forwardRef<HTMLDivElement, PDFViewerProps>(function PDF
     onPrevPage,
     recents,
     onOpenRecent,
+    onOpenMultipleRecents,
     onRemoveRecent,
+    onRemoveMultipleRecents,
     onClearAllRecents,
   }: PDFViewerProps,
   ref: ((node: HTMLDivElement | null) => void) | MutableRefObject<HTMLDivElement | null> | null
@@ -339,7 +344,9 @@ export const PDFViewer = forwardRef<HTMLDivElement, PDFViewerProps>(function PDF
             onOpenFile={onOpenFile}
             recents={recents}
             onOpenRecent={onOpenRecent}
+            onOpenMultipleRecents={onOpenMultipleRecents}
             onRemoveRecent={onRemoveRecent}
+            onRemoveMultipleRecents={onRemoveMultipleRecents}
             onClearAllRecents={onClearAllRecents}
           />
         ))}
@@ -601,16 +608,173 @@ function EmptyState({
   onOpenFile,
   recents,
   onOpenRecent,
+  onOpenMultipleRecents,
   onRemoveRecent,
+  onRemoveMultipleRecents,
   onClearAllRecents,
 }: {
   onOpenFile: () => void;
   recents: RecentFile[];
   onOpenRecent: (filePath: string, fileName: string) => void;
+  onOpenMultipleRecents?: (selected: RecentFile[]) => void;
   onRemoveRecent: (fileName: string) => void;
+  onRemoveMultipleRecents?: (fileNames: string[]) => void;
   onClearAllRecents: () => void;
 }) {
   const hasRecents = recents.length > 0;
+  const [selectedFileNames, setSelectedFileNames] = useState<Set<string>>(new Set());
+  const [lastSelected, setLastSelected] = useState<string | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{
+    title: string;
+    message: string;
+    confirmLabel: string;
+    onConfirm: () => void;
+  } | null>(null);
+
+  // Clean up selected names that might have been removed
+  useEffect(() => {
+    setSelectedFileNames((prev) => {
+      if (prev.size === 0) return prev;
+      const validNames = new Set(recents.map((r) => r.fileName));
+      const next = new Set<string>();
+      for (const name of prev) {
+        if (validNames.has(name)) next.add(name);
+      }
+      return next.size === prev.size ? prev : next;
+    });
+  }, [recents]);
+
+  const isSelecting = selectedFileNames.size > 0;
+
+  const handleToggleSelect = useCallback((fileName: string) => {
+    setSelectedFileNames((prev) => {
+      const next = new Set(prev);
+      if (next.has(fileName)) next.delete(fileName);
+      else next.add(fileName);
+      return next;
+    });
+    setLastSelected(fileName);
+  }, []);
+
+  const handleSelectAll = useCallback(() => {
+    setSelectedFileNames(new Set(recents.map((r) => r.fileName)));
+  }, [recents]);
+
+  const handleClearSelection = useCallback(() => {
+    setSelectedFileNames(new Set());
+    setLastSelected(null);
+  }, []);
+
+  const handleCardClick = useCallback(
+    (e: React.MouseEvent, r: RecentFile) => {
+      // If Shift is pressed and we have a lastSelected:
+      if (e.shiftKey && lastSelected) {
+        e.preventDefault();
+        const idx1 = recents.findIndex((item) => item.fileName === lastSelected);
+        const idx2 = recents.findIndex((item) => item.fileName === r.fileName);
+        if (idx1 !== -1 && idx2 !== -1) {
+          const start = Math.min(idx1, idx2);
+          const end = Math.max(idx1, idx2);
+          const range = recents.slice(start, end + 1).map((item) => item.fileName);
+          setSelectedFileNames((prev) => new Set([...prev, ...range]));
+          return;
+        }
+      }
+
+      // If Ctrl/Cmd is pressed, or if currently in selection mode:
+      if (e.ctrlKey || e.metaKey || isSelecting) {
+        e.preventDefault();
+        handleToggleSelect(r.fileName);
+        return;
+      }
+
+      // Normal click opens immediately
+      onOpenRecent(r.filePath, r.fileName);
+    },
+    [isSelecting, lastSelected, recents, handleToggleSelect, onOpenRecent]
+  );
+
+  const handleOpenSelected = useCallback(() => {
+    const selected = recents.filter((r) => selectedFileNames.has(r.fileName));
+    if (selected.length === 0) return;
+    if (selected.length === 1) {
+      onOpenRecent(selected[0].filePath, selected[0].fileName);
+    } else if (onOpenMultipleRecents) {
+      onOpenMultipleRecents(selected);
+    }
+    handleClearSelection();
+  }, [recents, selectedFileNames, onOpenRecent, onOpenMultipleRecents, handleClearSelection]);
+
+  const handleOpenAll = useCallback(() => {
+    if (recents.length === 0) return;
+    if (onOpenMultipleRecents) {
+      onOpenMultipleRecents(recents.slice(0, 10));
+    } else {
+      onOpenRecent(recents[0].filePath, recents[0].fileName);
+    }
+  }, [recents, onOpenMultipleRecents, onOpenRecent]);
+
+  const handlePromptClearAll = useCallback(() => {
+    setConfirmAction({
+      title: "Clear Recent Documents?",
+      message: `Are you sure you want to clear all ${recents.length} recent documents? This will also remove their saved page positions and offline cache.`,
+      confirmLabel: "Clear All",
+      onConfirm: () => {
+        onClearAllRecents();
+        setConfirmAction(null);
+      },
+    });
+  }, [recents.length, onClearAllRecents]);
+
+  const handlePromptDeleteSelected = useCallback(() => {
+    const names = Array.from(selectedFileNames);
+    if (names.length === 0) return;
+    setConfirmAction({
+      title: "Remove from Recents?",
+      message: `Are you sure you want to remove ${names.length} selected document${names.length > 1 ? "s" : ""} from your recent documents list?`,
+      confirmLabel: "Remove",
+      onConfirm: () => {
+        if (onRemoveMultipleRecents) {
+          onRemoveMultipleRecents(names);
+        } else {
+          for (const name of names) onRemoveRecent(name);
+        }
+        handleClearSelection();
+        setConfirmAction(null);
+      },
+    });
+  }, [selectedFileNames, onRemoveMultipleRecents, onRemoveRecent, handleClearSelection]);
+
+  const handlePromptDeleteSingle = useCallback(
+    (fileName: string) => {
+      setConfirmAction({
+        title: "Remove from Recents?",
+        message: `Are you sure you want to remove "${fileName}" from your recent documents list?`,
+        confirmLabel: "Remove",
+        onConfirm: () => {
+          onRemoveRecent(fileName);
+          setConfirmAction(null);
+        },
+      });
+    },
+    [onRemoveRecent]
+  );
+
+  // Global key listener for selection shortcuts
+  useEffect(() => {
+    if (!isSelecting) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        handleClearSelection();
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        handleOpenSelected();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isSelecting, handleClearSelection, handleOpenSelected]);
 
   const formatDate = (ts: number) => {
     const diff = Math.floor((Date.now() - ts) / 86400000);
@@ -714,58 +878,174 @@ function EmptyState({
       {/* Recents Section: Modern Card-Wise Grid */}
       {hasRecents && (
         <div className={styles.recentsWrap}>
-          <div className={styles.recentsHeader}>
-            <span className={styles.recentsLabel}>Recent Documents</span>
-            <div className={styles.recentsActions}>
-              <span className={styles.recentsCount}>{recents.length} files</span>
-              <span className={styles.recentsDot}>·</span>
-              <button
-                className={styles.clearRecentsBtn}
-                onClick={onClearAllRecents}
-                title="Clear all recent documents and storage"
-              >
-                Clear all
-              </button>
-            </div>
-          </div>
-
-          <div className={styles.recentsGrid}>
-            {recents.map((r) => (
-              <div
-                key={r.fileName}
-                className={styles.recentCard}
-                onClick={() => onOpenRecent(r.filePath, r.fileName)}
-                title={r.filePath || r.fileName}
-              >
-                <div className={styles.recentCardThumb}>
-                  <div className={styles.recentCardFileIcon}>
-                    <FileText size={36} strokeWidth={1.5} color="var(--text-secondary)" />
-                  </div>
-                  <span className={styles.pdfBadge}>PDF</span>
-                </div>
-
-                <div className={styles.recentCardBody}>
-                  <span className={styles.recentCardTitle}>{r.fileName}</span>
-                  <span className={styles.recentCardMeta}>
-                    {r.totalPages > 0 ? `Page ${r.lastPage} of ${r.totalPages} · ` : ""}
-                    {formatDate(r.openedAt)}
-                  </span>
-                </div>
-
+          {isSelecting ? (
+            <div className={`${styles.recentsHeader} ${styles.recentsHeaderSelecting}`}>
+              <div className={styles.recentsSelectionLeft}>
+                <span className={styles.recentsSelectedBadge}>
+                  {selectedFileNames.size} selected
+                </span>
                 <button
-                  className={styles.recentCardDelete}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onRemoveRecent(r.fileName);
+                  type="button"
+                  className={styles.recentsTextBtn}
+                  onClick={() => {
+                    if (selectedFileNames.size === recents.length) {
+                      handleClearSelection();
+                    } else {
+                      handleSelectAll();
+                    }
                   }}
-                  title="Remove from recents"
                 >
-                  ×
+                  {selectedFileNames.size === recents.length ? "Deselect all" : "Select all"}
                 </button>
               </div>
-            ))}
+
+              <div className={styles.recentsActions}>
+                <button
+                  type="button"
+                  className={styles.openSelectedBtn}
+                  onClick={handleOpenSelected}
+                  title={`Open ${selectedFileNames.size} selected document(s) in tabs`}
+                >
+                  <FolderOpen size={14} strokeWidth={2} />
+                  <span>Open Selected ({selectedFileNames.size})</span>
+                </button>
+
+                <button
+                  type="button"
+                  className={styles.removeSelectedBtn}
+                  onClick={handlePromptDeleteSelected}
+                  title={`Remove ${selectedFileNames.size} document(s) from recents`}
+                >
+                  <Trash2 size={13} strokeWidth={2} />
+                  <span>Remove</span>
+                </button>
+
+                <button
+                  type="button"
+                  className={styles.cancelSelectBtn}
+                  onClick={handleClearSelection}
+                  title="Cancel selection (Esc)"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className={styles.recentsHeader}>
+              <div className={styles.recentsHeaderLeft}>
+                <span className={styles.recentsLabel}>Recent Documents</span>
+                <span className={styles.recentsCount}>{recents.length} files</span>
+              </div>
+
+              <div className={styles.recentsActions}>
+                {recents.length > 1 && (
+                  <>
+                    <button
+                      type="button"
+                      className={styles.recentsActionBtn}
+                      onClick={handleOpenAll}
+                      title="Open all recent documents in tabs (up to 10)"
+                    >
+                      <FolderOpen size={13} strokeWidth={2} />
+                      <span>Open All</span>
+                    </button>
+                    <span className={styles.recentsDot}>·</span>
+                    <button
+                      type="button"
+                      className={styles.recentsActionBtn}
+                      onClick={handleSelectAll}
+                      title="Select multiple files"
+                    >
+                      <CheckSquare size={13} strokeWidth={2} />
+                      <span>Select</span>
+                    </button>
+                    <span className={styles.recentsDot}>·</span>
+                  </>
+                )}
+                <button
+                  type="button"
+                  className={styles.clearRecentsBtn}
+                  onClick={handlePromptClearAll}
+                  title="Clear all recent documents and storage"
+                >
+                  Clear all
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className={styles.recentsGrid}>
+            {recents.map((r) => {
+              const isSelected = selectedFileNames.has(r.fileName);
+              return (
+                <div
+                  key={r.fileName}
+                  className={`${styles.recentCard} ${isSelected ? styles.recentCardSelected : ""}`}
+                  onClick={(e) => handleCardClick(e, r)}
+                  title={
+                    isSelecting
+                      ? `${isSelected ? "Deselect" : "Select"} ${r.fileName}`
+                      : `${r.filePath || r.fileName}\n(Click to open, Ctrl+click or checkbox to select multiple)`
+                  }
+                >
+                  <div className={styles.recentCardThumb}>
+                    <button
+                      type="button"
+                      className={`${styles.recentCardCheckbox} ${isSelected ? styles.recentCardCheckboxSelected : ""} ${isSelecting ? styles.recentCardCheckboxVisible : ""}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleSelect(r.fileName);
+                      }}
+                      title={isSelected ? "Deselect" : "Select"}
+                      aria-label={isSelected ? `Deselect ${r.fileName}` : `Select ${r.fileName}`}
+                    >
+                      {isSelected && <Check size={10} strokeWidth={3.5} />}
+                    </button>
+
+                    <div className={styles.recentCardFileIcon}>
+                      <FileText size={36} strokeWidth={1.5} color="var(--text-secondary)" />
+                    </div>
+                    <span className={styles.pdfBadge}>PDF</span>
+                  </div>
+
+                  <div className={styles.recentCardBody}>
+                    <span className={styles.recentCardTitle}>{r.fileName}</span>
+                    <span className={styles.recentCardMeta}>
+                      {r.totalPages > 0 ? `Page ${r.lastPage} of ${r.totalPages} · ` : ""}
+                      {formatDate(r.openedAt)}
+                    </span>
+                  </div>
+
+                  {!isSelecting && (
+                    <button
+                      type="button"
+                      className={styles.recentCardDelete}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handlePromptDeleteSingle(r.fileName);
+                      }}
+                      title="Remove from recents"
+                      aria-label={`Remove ${r.fileName}`}
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
+      )}
+
+      {confirmAction && (
+        <ConfirmModal
+          title={confirmAction.title}
+          message={confirmAction.message}
+          confirmLabel={confirmAction.confirmLabel}
+          cancelLabel="Cancel"
+          onConfirm={confirmAction.onConfirm}
+          onCancel={() => setConfirmAction(null)}
+        />
       )}
     </div>
   );

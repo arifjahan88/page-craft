@@ -2,7 +2,7 @@ import { useRef, useCallback, useEffect, useState } from "react";
 import React from "react";
 import { ThemeProvider } from "./hooks/useTheme";
 import { usePDF } from "./hooks/usePDF";
-import { useRecents } from "./hooks/useRecents";
+import { useRecents, type RecentFile } from "./hooks/useRecents";
 import { useTabs } from "./hooks/useTabs";
 import { Toolbar } from "./components/Toolbar";
 import { TabBar } from "./components/TabBar";
@@ -85,7 +85,14 @@ function PDFApp({ initialFiles, initialFilePath }: PDFAppProps) {
     goToPrevMatch,
   } = usePDF(canvasRef, textLayerRef);
 
-  const { recents, addRecent, updateRecentPage, removeRecent, clearAllRecents } = useRecents();
+  const {
+    recents,
+    addRecent,
+    updateRecentPage,
+    removeRecent,
+    removeMultipleRecents,
+    clearAllRecents,
+  } = useRecents();
   const { tabs, activeId, openTab, activateTab, closeTab, closeAllTabs, saveTabState } = useTabs();
 
   // ── Go Home: close all open files/tabs and return to home screen ─────────
@@ -463,6 +470,65 @@ function PDFApp({ initialFiles, initialFilePath }: PDFAppProps) {
     [removeRecent]
   );
 
+  // ── Re-open multiple files from recents ───────────────────────────────────
+  const handleOpenMultipleRecents = useCallback(
+    async (selectedRecents: RecentFile[]) => {
+      if (selectedRecents.length === 0) return;
+      setPendingFile(true);
+      try {
+        const items: Array<{
+          buffer: ArrayBuffer;
+          fileName: string;
+          filePath: string;
+        }> = [];
+        for (const r of selectedRecents.slice(0, 10)) {
+          let buffer: ArrayBuffer | null = null;
+          if (IS_TAURI && r.filePath) {
+            try {
+              const { invoke } = await import("@tauri-apps/api/core");
+              const base64 = await invoke<string>("read_pdf_file", {
+                path: r.filePath,
+              });
+              buffer = base64ToBuffer(base64);
+            } catch (err) {
+              console.warn(`Could not read ${r.filePath} from disk:`, err);
+            }
+          }
+          if (!buffer) {
+            buffer = await getPDFBuffer(r.fileName);
+          }
+          if (buffer) {
+            items.push({
+              buffer,
+              fileName: r.fileName,
+              filePath: r.filePath,
+            });
+          }
+        }
+
+        if (items.length > 0) {
+          await loadMultipleBuffers(items);
+        }
+      } catch (err) {
+        console.error("Failed to open multiple recents:", err);
+      } finally {
+        setPendingFile(false);
+      }
+    },
+    [loadMultipleBuffers]
+  );
+
+  // ── Remove multiple files from recents ────────────────────────────────────
+  const handleRemoveMultipleRecents = useCallback(
+    (fileNames: string[]) => {
+      removeMultipleRecents(fileNames);
+      for (const name of fileNames) {
+        deletePDFBuffer(name);
+      }
+    },
+    [removeMultipleRecents]
+  );
+
   // ── Switch to an existing tab ──────────────────────────────────────────────
   const handleActivateTab = useCallback(
     async (id: string) => {
@@ -626,7 +692,9 @@ function PDFApp({ initialFiles, initialFilePath }: PDFAppProps) {
         onPrevPage={prevPage}
         recents={recents}
         onOpenRecent={handleOpenRecent}
+        onOpenMultipleRecents={handleOpenMultipleRecents}
         onRemoveRecent={handleRemoveRecent}
+        onRemoveMultipleRecents={handleRemoveMultipleRecents}
         onClearAllRecents={handleClearAllRecents}
       />
 
