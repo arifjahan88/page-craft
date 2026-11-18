@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <a href="#-building-for-distribution"><img src="https://img.shields.io/badge/Release-v1.0.0-blueviolet?style=flat-square" alt="Version 1.0.0" /></a>
+  <a href="#-building-for-distribution"><img src="https://img.shields.io/badge/Release-v1.0.1-blueviolet?style=flat-square" alt="Version 1.0.1" /></a>
   <a href="https://tauri.app"><img src="https://img.shields.io/badge/Tauri-v2.0-24C8D8?style=flat-square&logo=tauri&logoColor=white" alt="Tauri v2" /></a>
   <a href="https://react.dev"><img src="https://img.shields.io/badge/React-18.3-61DAFB?style=flat-square&logo=react&logoColor=black" alt="React 18" /></a>
   <a href="https://www.typescriptlang.org"><img src="https://img.shields.io/badge/TypeScript-5.5-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript" /></a>
@@ -160,11 +160,11 @@ yarn build:linux
 | Platform | Package Format | Output Path |
 | :--- | :--- | :--- |
 | **macOS** | `.app` Bundle | `src-tauri/target/release/bundle/macos/PageCraft.app` |
-| **macOS** | `.dmg` Installer | `src-tauri/target/release/bundle/dmg/PageCraft_1.0.0_aarch64.dmg` |
-| **Windows** | `.exe` Setup | `src-tauri/target/release/bundle/nsis/PageCraft_1.0.0_x64-setup.exe` |
-| **Windows** | `.msi` Package | `src-tauri/target/release/bundle/msi/PageCraft_1.0.0_x64_en-US.msi` |
-| **Linux** | `.AppImage` | `src-tauri/target/release/bundle/appimage/pagecraft_1.0.0_amd64.AppImage` |
-| **Linux** | `.deb` Package | `src-tauri/target/release/bundle/deb/pagecraft_1.0.0_amd64.deb` |
+| **macOS** | `.dmg` Installer | `src-tauri/target/release/bundle/dmg/PageCraft_1.0.1_aarch64.dmg` |
+| **Windows** | `.exe` Setup | `src-tauri/target/release/bundle/nsis/PageCraft_1.0.1_x64-setup.exe` |
+| **Windows** | `.msi` Package | `src-tauri/target/release/bundle/msi/PageCraft_1.0.1_x64_en-US.msi` |
+| **Linux** | `.AppImage` | `src-tauri/target/release/bundle/appimage/pagecraft_1.0.1_amd64.AppImage` |
+| **Linux** | `.deb` Package | `src-tauri/target/release/bundle/deb/pagecraft_1.0.1_amd64.deb` |
 
 ---
 
@@ -172,10 +172,39 @@ yarn build:linux
 
 A pre-configured GitHub Actions workflow is included at [`.github/workflows/build-all.yml`](.github/workflows/build-all.yml). 
 
-To build all installers, simply trigger the workflow manually from the **Actions** tab on GitHub (no git tag needed):
+To build all installers, simply trigger the workflow manually from the **Actions** tab on GitHub (or push a release tag):
 1. Matrix runners spin up on **macOS**, **Windows**, and **Ubuntu**.
-2. Each platform compiles native GUI toolkits and packages installers simultaneously.
-3. Automatically drafts a GitHub Release containing all `.dmg`, `.exe`, `.msi`, `.AppImage`, and `.deb` binaries ready for download.
+2. Automatically synchronizes version metadata from your release tag across all config files.
+3. Each platform compiles native GUI toolkits and packages installers with filenames matching the release tag.
+4. Drafts a GitHub Release containing all `.dmg`, `.exe`, `.msi`, `.AppImage`, and `.deb` binaries ready for download.
+
+### 🏷️ 1-Command Version Synchronizer
+
+To bump the version across the entire repository before a release:
+
+```bash
+yarn bump 1.0.1
+```
+
+This single command atomically updates:
+- `package.json` (`"version"`)
+- `src-tauri/tauri.conf.json` (`"version"`)
+- `src-tauri/Cargo.toml` (`version`)
+- `README.md` (badges and download paths)
+
+---
+
+### 🛡️ Windows Installation & SmartScreen Notice
+
+PageCraft is a 100% open-source, privacy-first desktop application without an expensive commercial code-signing certificate (\$200–\$500/year). When running the Windows installer for the first time on a new version, Microsoft Defender SmartScreen may show an *"Unrecognized app"* notice:
+
+> **"Windows protected your PC — Microsoft Defender SmartScreen prevented an unrecognized app from starting."**
+
+**How to run it in 2 clicks:**
+1. Click **"More info"**
+2. Click **"Run anyway"**
+
+*(Alternatively, right-click the `.exe` installer → **Properties** → check **"Unblock"** → click **OK**).*
 
 ---
 

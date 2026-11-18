@@ -22,11 +22,19 @@ if (platform === "darwin") {
 
   console.log("------------------------------------------");
   console.log("ℹ️  Building for Windows & Linux:");
-  console.log("   Tauri desktop apps compile native OS GUI libraries (WebView2 on Windows, WebKitGTK on Linux).");
-  console.log("   Because macOS lacks Windows & Linux system SDKs, Tauri does not support cross-packaging them directly on a Mac.");
-  console.log("   To build all 3 platforms (macOS, Windows, and Linux) automatically with 1 click:");
+  console.log(
+    "   Tauri desktop apps compile native OS GUI libraries (WebView2 on Windows, WebKitGTK on Linux)."
+  );
+  console.log(
+    "   Because macOS lacks Windows & Linux system SDKs, Tauri does not support cross-packaging them directly on a Mac."
+  );
+  console.log(
+    "   To build all 3 platforms (macOS, Windows, and Linux) automatically with 1 click:"
+  );
   console.log("   👉 We created a GitHub Actions workflow: .github/workflows/build-all.yml");
-  console.log("   Simply push your repository to GitHub, and it will build and package all 3 operating systems in parallel!");
+  console.log(
+    "   Simply push your repository to GitHub, and it will build and package all 3 operating systems in parallel!"
+  );
   console.log("------------------------------------------\n");
 } else if (platform === "win32") {
   console.log("📦 Building Windows application (.exe & .msi)...\n");
