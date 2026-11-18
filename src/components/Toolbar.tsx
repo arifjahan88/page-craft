@@ -453,13 +453,6 @@ export function Toolbar({
             <Moon size={15} strokeWidth={2} />
           )}
         </button>
-
-        <span
-          className={styles.versionTag}
-          title={`PageCraft v${__APP_VERSION__}`}
-        >
-          v{__APP_VERSION__}
-        </span>
       </div>
     </div>
   );
