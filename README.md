@@ -1,25 +1,93 @@
-# PDF Reader
+<p align="center">
+  <img src="assets/banner.png" alt="PDF Reader - Modern Desktop & Web PDF Reader" width="100%" />
+</p>
 
-A minimal, fast, and beautiful PDF reader desktop application built with **Tauri + React + PDF.js**.
+<p align="center">
+  <a href="https://tauri.app"><img src="https://img.shields.io/badge/Tauri-v2.0-24C8D8?style=flat-square&logo=tauri&logoColor=white" alt="Tauri v2" /></a>
+  <a href="https://react.dev"><img src="https://img.shields.io/badge/React-18.3-61DAFB?style=flat-square&logo=react&logoColor=black" alt="React 18" /></a>
+  <a href="https://www.typescriptlang.org"><img src="https://img.shields.io/badge/TypeScript-5.5-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript" /></a>
+  <a href="https://vitejs.dev"><img src="https://img.shields.io/badge/Vite-5.4-646CFF?style=flat-square&logo=vite&logoColor=white" alt="Vite" /></a>
+  <a href="https://mozilla.github.io/pdf.js"><img src="https://img.shields.io/badge/PDF.js-v4.4-FF6600?style=flat-square&logo=firefox&logoColor=white" alt="PDF.js" /></a>
+  <a href="#license"><img src="https://img.shields.io/badge/License-MIT-emerald?style=flat-square" alt="License" /></a>
+</p>
 
-![Dark Mode](https://img.shields.io/badge/theme-dark%20%2F%20light-informational)
-![Stack](https://img.shields.io/badge/stack-Tauri%20%2B%20React%20%2B%20PDF.js-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
+<p align="center">
+  <strong>PDF Reader</strong> is an ultra-fast, minimal, and beautiful document reader built with <strong>Tauri v2</strong>, <strong>React 18</strong>, and <strong>PDF.js</strong>.<br />
+  Engineered for distraction-free reading with smooth continuous scrolling, multi-tab workflows, in-app vector printing, and page-to-image extraction.
+</p>
+
+<p align="center">
+  <a href="#-key-features">Key Features</a> •
+  <a href="#-quick-start">Quick Start</a> •
+  <a href="#-keyboard-shortcuts">Shortcuts</a> •
+  <a href="#-building-for-distribution">Distribution</a> •
+  <a href="#-architecture">Architecture</a>
+</p>
 
 ---
 
-## ✨ Features
+## ✨ Key Features
 
-- 📄 Open any PDF — single page or 1000+ page documents
-- ⚡ Lazy page rendering with LRU cache (only renders what you see)
-- 🔍 Zoom in / out (25% → 400%), click zoom % to type exact value
-- 📖 Smooth page navigation — click, keyboard arrows, or type page number
-- 🌙 Dark / Light mode with animated transitions (persisted across sessions)
-- 🖱️ Drag to pan when zoomed in
-- 🖱️ Ctrl + Scroll to zoom
-- 🗂️ Drag & drop a PDF onto the window to open it
-- ⌨️ Full keyboard shortcuts
-- 📦 Tiny bundle — ~10MB app, ~40MB RAM usage
+### 📑 Multi-Tab Workspace
+- Open and manage up to **10 PDF documents simultaneously** with an intuitive, native-feeling tab bar.
+- Each tab preserves its own independent scroll position, current page, and zoom level.
+- Quickly cycle through open documents using `Ctrl / ⌘ + Tab` and `Ctrl / ⌘ + Shift + Tab`.
+
+### 🎨 Aesthetic Aurora & Wave Interface
+- Fluid, GPU-accelerated animated SVG waves and ambient aurora mesh glows create a calming home screen.
+- Frosted glassmorphism (`backdrop-filter: blur`) cards with anti-aliased border radii.
+- Seamless **Dark** and **Light** themes with smooth color transitions and persistent state.
+
+### 🖨️ High-Fidelity In-App Native Print Dialog
+- Prints documents with **100% original vector sharpness**, exact typography, and paper geometries.
+- **Desktop (macOS)**: Integrates directly with native `PDFKit` and `AppKit` (`NSPrintOperation`), sliding down the native macOS print sheet right inside the window without opening external preview applications.
+- **Web**: Uses an isolated, offscreen streaming `<iframe>` print pipeline with automatic memory cleanup.
+
+### 📦 Multi-Format Page Extraction (ZIP Download)
+- Extract every page of any PDF into crisp image files:
+  - **PNG (`.png`)**: High-resolution lossless extraction at $2.0\times$ scale (ideal for diagrams and fine text).
+  - **JPG (`.jpg`)**: High-efficiency photographic compression.
+  - **WebP (`.webp`)**: Modern, compact web image format.
+- **Zero-Dependency High-Speed ZIP Generator**: Built-in in-memory PKZip 2.0 containerizer with 32-bit CRC validation.
+- **Human-Readable File Naming**: Structured naming with zero-padding (e.g., `Document - Page 01.png`, `Document - Extracted Pages (PNG).zip`).
+- **Interactive Progress Modal**: Live progress bar, stage indicator, and cancellation support (`Escape` or Cancel button). Saves via native OS dialog in desktop mode.
+
+### 🔍 Instant Full-Text Document Search
+- Real-time full-document keyword matching with match counter indicator (`X / Y`).
+- Jump forward (`Enter`) and backward (`Shift + Enter`) through matches across all pages.
+- Highlighted text occurrences rendered directly within the selectable text layer.
+
+### ⚡ Continuous Scroll & Lazy Rendering
+- Vertical continuous document flow with lazy page virtualization powered by `IntersectionObserver`.
+- Automatic viewport page tracking synchronized with the toolbar indicator and thumbnail navigation.
+- Low-memory footprint: pages outside the preload threshold are cleanly de-allocated.
+
+### 🕒 Persistent Recent Documents
+- Card-based home screen grid displaying previously opened files with last-read page badges (`Page X of Y`).
+- Backed by **IndexedDB** binary buffer storage for instant re-opening even in browser mode.
+- Clear individual files or wipe all document history and cache in one click.
+
+---
+
+## ⌨️ Keyboard Shortcuts
+
+| Shortcut | Action | Description |
+| :--- | :--- | :--- |
+| `Ctrl / ⌘ + O` | **Open File** | Open native OS file picker (supports multi-selection) |
+| `Ctrl / ⌘ + P` | **Print** | Trigger native in-app print dialog sheet |
+| `Ctrl / ⌘ + F` | **Search** | Open full-text document search bar |
+| `Ctrl / ⌘ + W` | **Close Tab** | Close active tab (returns to home screen when last tab closes) |
+| `W` *(without Ctrl)* | **Fit to Width** | Instantly fit active page to viewer container width |
+| `Ctrl / ⌘ + Tab` | **Next Tab** | Switch to the next open document |
+| `Ctrl / ⌘ + Shift + Tab` | **Previous Tab** | Switch to the previous open document |
+| `→` / `↓` / `Space` | **Next Page** | Navigate to the subsequent document page |
+| `←` / `↑` | **Previous Page** | Navigate to the preceding document page |
+| `Ctrl / ⌘ + =` | **Zoom In** | Increase document zoom level |
+| `Ctrl / ⌘ + -` | **Zoom Out** | Decrease document zoom level |
+| `Ctrl / ⌘ + 0` | **Reset Zoom** | Reset zoom level to 100% |
+| `Ctrl + Scroll` | **Pinch Zoom** | Smooth mouse wheel zoom adjustment |
+| `Click + Drag` | **Pan Document** | Pan around the canvas when zoomed in |
+| `Escape` | **Close / Cancel** | Close search bar or abort ongoing extraction |
 
 ---
 
@@ -27,184 +95,168 @@ A minimal, fast, and beautiful PDF reader desktop application built with **Tauri
 
 ### Prerequisites
 
-| Tool | Version | Install |
-|------|---------|---------|
-| Node.js | ≥ 18 | https://nodejs.org |
-| Rust | stable | https://rustup.rs |
-| System deps | — | See below |
-
-### System Dependencies
-
-**macOS** — No extra steps needed.
-
-**Windows** — Install [Microsoft C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) with "Desktop development with C++" workload selected.
-
-**Linux (Ubuntu/Debian)**
-```bash
-sudo apt update && sudo apt install -y \
-  libwebkit2gtk-4.1-dev \
-  libgtk-3-dev \
-  libayatana-appindicator3-dev \
-  librsvg2-dev \
-  patchelf
-```
-
-**Linux (Fedora/RHEL)**
-```bash
-sudo dnf install webkit2gtk4.1-devel gtk3-devel librsvg2-devel
-```
+| Tool | Recommended Version | Download |
+| :--- | :--- | :--- |
+| **Node.js** | `>= 18.x` | [nodejs.org](https://nodejs.org) |
+| **Rust & Cargo** *(for desktop)* | `stable` | [rustup.rs](https://rustup.rs) |
 
 ---
 
-## 📦 Installation & Running
+### Installation
 
 ```bash
-# 1. Clone / unzip the project
+# 1. Clone the repository
+git clone https://github.com/your-username/pdf-reader.git
 cd pdf-reader
 
-# 2. Install JS dependencies
+# 2. Install dependencies
 npm install
-
-# 3a. Run in development mode (live reload)
-npm run tauri dev
-
-# 3b. OR build a native binary for your OS
-npm run tauri build
-# Output: src-tauri/target/release/bundle/
+# or
+yarn install
 ```
 
 ---
 
-## 🌐 Run as a Web App (no Rust needed)
+### Running in Development
 
-If you just want to test the UI in a browser without Tauri:
-
+#### 🖥️ Desktop Application (Tauri Live Reload)
 ```bash
-npm install
+npm run dev:desktop
+# or
+yarn dev:desktop
+```
+
+#### 🌐 Web Application (Browser Mode)
+```bash
 npm run dev
-# Open http://localhost:1420
+# or
+yarn dev
 ```
-
-> In browser mode, "Open PDF" uses the native `<input type="file">` picker instead of the OS dialog. All other features work identically.
-
----
-
-## ⌨️ Keyboard Shortcuts
-
-| Action | Shortcut |
-|--------|----------|
-| Open file | `Ctrl / ⌘ + O` |
-| Next page | `→` `↓` `Space` |
-| Previous page | `←` `↑` |
-| Zoom in | `Ctrl / ⌘ + =` |
-| Zoom out | `Ctrl / ⌘ + -` |
-| Reset zoom | `Ctrl / ⌘ + 0` |
-| Scroll to pan | Mouse wheel |
-| Zoom with scroll | `Ctrl + Scroll` |
-| Drag to pan | Click & drag |
-
----
-
-## 🗂️ Project Structure
-
-```
-pdf-reader/
-├── src/                        # React frontend
-│   ├── App.tsx                 # Root app, file-open handler, drag & drop
-│   ├── main.tsx                # React entry point
-│   ├── hooks/
-│   │   ├── usePDF.ts           # PDF.js engine: load, render, cache, navigate
-│   │   └── useTheme.tsx        # Dark/light theme context + localStorage persist
-│   ├── components/
-│   │   ├── Toolbar.tsx         # Top bar: open, navigation, zoom, theme toggle
-│   │   ├── Toolbar.module.css
-│   │   ├── PDFViewer.tsx       # Canvas renderer + empty/loading/error states
-│   │   ├── PDFViewer.module.css
-│   │   ├── StatusBar.tsx       # Bottom info bar
-│   │   └── StatusBar.module.css
-│   ├── styles/
-│   │   └── globals.css         # CSS custom properties (theme tokens), scrollbar
-│   └── types/
-│       ├── css.d.ts            # CSS module type declarations
-│       └── tauri-plugins.d.ts  # Tauri plugin type stubs
-├── src-tauri/                  # Rust / Tauri backend
-│   ├── src/
-│   │   ├── main.rs             # Tauri setup, window config, read_pdf_file command
-│   │   └── lib.rs
-│   ├── capabilities/
-│   │   └── default.json        # Tauri v2 permission grants
-│   ├── tauri.conf.json         # App metadata, window size, bundle config
-│   ├── Cargo.toml
-│   └── build.rs
-├── index.html
-├── vite.config.ts
-├── tsconfig.json
-└── package.json
-```
-
----
-
-## ⚙️ Performance Architecture
-
-### Lazy Rendering
-Only the **current page** is rendered to the canvas. No upfront processing of the whole document.
-
-### LRU Page Cache
-After rendering a page, it's stored as an `ImageBitmap` (GPU-resident). Revisiting a cached page is **instant** — just a `drawImage` call.
-
-```
-Cache holds up to 20 pages × zoom level
-e.g.  "5-1.00" = page 5 at 100% zoom
-```
-
-### Background Prefetch
-After rendering the current page, pages ±2 ahead/behind are rendered on an **offscreen canvas** in the background so flipping pages feels instantaneous.
-
-### HiDPI / Retina Support
-Canvas is sized at `zoom × devicePixelRatio` then CSS-scaled back, giving crisp rendering on all displays.
-
----
-
-## 🎨 Theming
-
-All colors are CSS custom properties on `:root`. Switching themes just swaps the `data-theme` attribute on `<html>` — no re-render, no flicker.
-
-```css
-[data-theme="dark"]  { --bg-primary: #0c0c0c; --text-primary: #f0f0f0; ... }
-[data-theme="light"] { --bg-primary: #f2f2f2; --text-primary: #111111; ... }
-```
-
-Theme preference is persisted in `localStorage` and restored on next launch.
+Open [http://localhost:1420](http://localhost:1420) in your browser. All viewer features, search, tab management, and extraction work identically in web mode.
 
 ---
 
 ## 📦 Building for Distribution
 
+### Unified Desktop Build Script
+Run the automated desktop builder script:
 ```bash
-npm run tauri build
+npm run build:all
+# or
+yarn build:all
 ```
 
-Output locations:
-- **macOS**: `src-tauri/target/release/bundle/macos/PDF Reader.app` + `.dmg`
-- **Windows**: `src-tauri/target/release/bundle/msi/` + `nsis/`
-- **Linux**: `src-tauri/target/release/bundle/deb/` + `appimage/`
+### Platform-Specific Commands
 
-Final binary size is typically **8–14 MB**.
+```bash
+# macOS (.app & .dmg)
+npm run build:mac
+
+# macOS Universal Binary (Apple Silicon + Intel)
+npm run build:mac:universal
+
+# Windows (.exe NSIS & .msi) — run on Windows
+npm run build:win
+
+# Linux (.deb & .AppImage) — run on Linux
+npm run build:linux
+```
+
+### 📂 Build Output Locations
+
+| Platform | Package Format | Output Path |
+| :--- | :--- | :--- |
+| **macOS** | `.app` Bundle | `src-tauri/target/release/bundle/macos/PDF Reader.app` |
+| **macOS** | `.dmg` Installer | `src-tauri/target/release/bundle/dmg/PDF Reader_1.2.2_aarch64.dmg` |
+| **Windows** | `.exe` Setup | `src-tauri/target/release/bundle/nsis/PDF Reader_1.2.2_x64-setup.exe` |
+| **Windows** | `.msi` Package | `src-tauri/target/release/bundle/msi/PDF Reader_1.2.2_x64_en-US.msi` |
+| **Linux** | `.AppImage` | `src-tauri/target/release/bundle/appimage/pdf-reader_1.2.2_amd64.AppImage` |
+| **Linux** | `.deb` Package | `src-tauri/target/release/bundle/deb/pdf-reader_1.2.2_amd64.deb` |
 
 ---
 
-## 🛠️ Customisation Tips
+## ☁️ Automated Multi-Platform CI/CD
 
-**Change default window size** — edit `width`/`height` in `src-tauri/tauri.conf.json`
+A pre-configured GitHub Actions workflow is included at [`.github/workflows/build-all.yml`](.github/workflows/build-all.yml). 
 
-**Change accent color** — edit `--accent` in both theme blocks in `src/styles/globals.css`
+Whenever you push a git tag (e.g., `v1.2.2`) or manually trigger the workflow from the **Actions** tab on GitHub:
+1. Matrix runners spin up on **macOS**, **Windows**, and **Ubuntu**.
+2. Each platform compiles native GUI toolkits and packages installers simultaneously.
+3. Automatically drafts a GitHub Release containing all `.dmg`, `.exe`, `.msi`, `.AppImage`, and `.deb` binaries ready for download.
 
-**Increase page cache size** — change the `> 20` guard in `usePDF.ts` `renderPage()`
+---
 
-**Change zoom step** — edit `ZOOM_STEP` constant in `usePDF.ts`
+## 🏛️ Architecture & Project Structure
+
+```
+pdf-reader/
+├── .github/
+│   └── workflows/
+│       └── build-all.yml           # Multi-platform CI/CD release workflow
+├── assets/
+│   └── banner.png                  # High-resolution README banner preview
+├── public/                         # Web assets & progressive web icons
+│   ├── favicon.svg                 # Scalable vector favicon
+│   ├── favicon-32x32.png           # Fallback PNG favicon
+│   ├── apple-touch-icon.png        # Retina touch icon
+│   └── site.webmanifest            # Web manifest configuration
+├── scripts/
+│   ├── build.js                    # Cross-platform desktop build runner
+│   └── generate-banner.js          # SVG-to-PNG hero banner generator
+├── src-tauri/                      # Rust / Tauri desktop core
+│   ├── capabilities/
+│   │   └── default.json            # Security capability scopes (dialog, fs)
+│   ├── icons/                      # Desktop icon bundle (icns, ico, png)
+│   ├── src/
+│   │   ├── main.rs                 # PDFKit native print sheet & FS commands
+│   │   └── lib.rs                  # Library entrypoint
+│   └── tauri.conf.json             # App metadata, bundle IDs, window specs
+├── src/                            # React 18 UI layer
+│   ├── components/
+│   │   ├── ExtractionProgressModal.tsx # Page-to-image extraction progress & cancel UI
+│   │   ├── PDFViewer.tsx           # Continuous canvas viewer & home screen
+│   │   ├── SearchBar.tsx           # Full-text search bar with match counter
+│   │   ├── StatusBar.tsx           # Bottom page metrics & document status
+│   │   ├── TabBar.tsx              # Multi-document tabs with close/add actions
+│   │   └── Toolbar.tsx             # Responsive controls, zoom, print & export menu
+│   ├── hooks/
+│   │   ├── usePDF.ts               # Core PDF.js loader & text layer highlight engine
+│   │   ├── useRecents.ts           # Recent document history management
+│   │   ├── useTabs.ts              # Multi-document tab state & buffer storage
+│   │   └── useTheme.tsx            # Fluid dark/light theme context & persistence
+│   ├── styles/
+│   │   └── globals.css             # Theme tokens, fluid wave animations & reset
+│   ├── utils/
+│   │   ├── pdfExtractor.ts         # High-resolution canvas rendering to image
+│   │   ├── pdfPrinter.ts           # Hybrid native print bridge (Tauri / Web)
+│   │   ├── pdfStorage.ts           # IndexedDB binary buffer persistence
+│   │   └── zipWriter.ts            # Zero-dependency in-memory PKZip 2.0 generator
+│   ├── App.tsx                     # Top-level coordinator & keyboard handlers
+│   └── main.tsx                    # React DOM entry point
+├── package.json
+├── tsconfig.json
+└── vite.config.ts
+```
+
+---
+
+## 🛠️ Code Style & Quality
+
+The codebase enforces strict TypeScript typing, Prettier formatting, and ESLint standards:
+
+```bash
+# Check code formatting
+npm run format:check
+
+# Format codebase with Prettier
+npm run format
+
+# Run linter
+npm run lint:check
+```
 
 ---
 
 ## 📄 License
 
-MIT
+Distributed under the **MIT License**. See `LICENSE` for more information.
