@@ -16,28 +16,28 @@
 }
 
 [data-theme="dark"] {
-  --bg-primary: #0c0c0c;
-  --bg-secondary: #161616;
-  --bg-toolbar: #111111;
-  --bg-canvas: #1a1a1a;
-  --bg-button: #222222;
-  --bg-button-hover: #2a2a2a;
-  --bg-button-active: #333333;
-  --bg-input: #1e1e1e;
+  --bg-primary: #0a0a0c;
+  --bg-secondary: #141419;
+  --bg-toolbar: #111116;
+  --bg-canvas: #0e0f14;
+  --bg-button: #1a1c26;
+  --bg-button-hover: #242736;
+  --bg-button-active: #2e3245;
+  --bg-input: #15161f;
   --bg-overlay: rgba(0, 0, 0, 0.85);
-  --bg-page: #2b2b2b;
+  --bg-page: #1d1f2b;
 
-  --border: #282828;
-  --border-subtle: #1e1e1e;
-  --border-focus: #505050;
+  --border: #232533;
+  --border-subtle: #191b26;
+  --border-focus: #4b4e6d;
 
-  --text-primary: #f0f0f0;
-  --text-secondary: #888888;
-  --text-muted: #444444;
+  --text-primary: #f3f4f8;
+  --text-secondary: #9094a6;
+  --text-muted: #52566b;
   --text-accent: #ffffff;
 
-  --accent: #6e6ef4;
-  --accent-glow: rgba(110, 110, 244, 0.2);
+  --accent: #6366f1;
+  --accent-glow: rgba(99, 102, 241, 0.25);
 
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.6);
@@ -46,31 +46,45 @@
   --scrollbar-track: #111111;
   --scrollbar-thumb: #333333;
   --scrollbar-hover: #444444;
+
+  /* ── Aesthetic Home Background Variables (Dark) ── */
+  --wave-grad-1: rgba(99, 102, 241, 0.16);
+  --wave-grad-2: rgba(139, 92, 246, 0.12);
+  --wave-grad-3: rgba(236, 72, 153, 0.08);
+  --wave-line: rgba(165, 180, 252, 0.35);
+  --aurora-1: rgba(99, 102, 241, 0.15);
+  --aurora-2: rgba(139, 92, 246, 0.12);
+  --aurora-3: rgba(14, 165, 233, 0.1);
+  --dot-grid: rgba(255, 255, 255, 0.045);
+  --bg-card-glass: rgba(20, 22, 31, 0.7);
+  --border-card: rgba(255, 255, 255, 0.09);
+  --shadow-card: rgba(0, 0, 0, 0.35);
+  --shadow-card-hover: rgba(0, 0, 0, 0.55);
 }
 
 [data-theme="light"] {
-  --bg-primary: #f2f2f2;
+  --bg-primary: #f6f7fb;
   --bg-secondary: #ffffff;
-  --bg-toolbar: #fafafa;
-  --bg-canvas: #e8e8e8;
-  --bg-button: #ebebeb;
-  --bg-button-hover: #e0e0e0;
-  --bg-button-active: #d8d8d8;
+  --bg-toolbar: #ffffff;
+  --bg-canvas: #f4f5fa;
+  --bg-button: #ebeef5;
+  --bg-button-hover: #e0e4ef;
+  --bg-button-active: #d6dbe9;
   --bg-input: #ffffff;
   --bg-overlay: rgba(255, 255, 255, 0.9);
   --bg-page: #ffffff;
 
-  --border: #e0e0e0;
-  --border-subtle: #eeeeee;
-  --border-focus: #aaaaaa;
+  --border: #e2e5f0;
+  --border-subtle: #eceff8;
+  --border-focus: #9aa2c0;
 
-  --text-primary: #111111;
-  --text-secondary: #666666;
-  --text-muted: #bbbbbb;
+  --text-primary: #12141d;
+  --text-secondary: #63687e;
+  --text-muted: #a3a8be;
   --text-accent: #000000;
 
   --accent: #5555e0;
-  --accent-glow: rgba(85, 85, 224, 0.15);
+  --accent-glow: rgba(85, 85, 224, 0.18);
 
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.1);
@@ -79,6 +93,20 @@
   --scrollbar-track: #f0f0f0;
   --scrollbar-thumb: #cccccc;
   --scrollbar-hover: #bbbbbb;
+
+  /* ── Aesthetic Home Background Variables (Light) ── */
+  --wave-grad-1: rgba(99, 102, 241, 0.09);
+  --wave-grad-2: rgba(168, 85, 247, 0.07);
+  --wave-grad-3: rgba(236, 72, 153, 0.05);
+  --wave-line: rgba(99, 102, 241, 0.22);
+  --aurora-1: rgba(99, 102, 241, 0.09);
+  --aurora-2: rgba(192, 132, 252, 0.07);
+  --aurora-3: rgba(56, 189, 248, 0.06);
+  --dot-grid: rgba(0, 0, 0, 0.035);
+  --bg-card-glass: rgba(255, 255, 255, 0.78);
+  --border-card: rgba(0, 0, 0, 0.08);
+  --shadow-card: rgba(0, 0, 0, 0.05);
+  --shadow-card-hover: rgba(0, 0, 0, 0.12);
 }
 
 /* ─── Base Styles ─── */

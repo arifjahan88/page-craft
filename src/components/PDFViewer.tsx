@@ -2,7 +2,7 @@ import { useRef, useEffect, useCallback, useState, forwardRef, type MutableRefOb
 import * as pdfjsLib from "pdfjs-dist";
 import { type RecentFile } from "../hooks/useRecents";
 import { applyHighlights } from "../hooks/usePDF";
-import { UploadCloud, FileText } from "lucide-react";
+import { UploadCloud, FileText, FolderOpen } from "lucide-react";
 import styles from "./PDFViewer.module.css";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -625,18 +625,85 @@ function EmptyState({
 
   return (
     <div className={hasRecents ? styles.emptyStateTop : styles.emptyStateCentered}>
+      {/* ── Aesthetic Background (Aurora Glows, Subtle Grid & Fluid Waves) ── */}
+      <div className={styles.aestheticBg} aria-hidden="true">
+        <div className={styles.auroraOrb1} />
+        <div className={styles.auroraOrb2} />
+        <div className={styles.auroraOrb3} />
+        <div className={styles.dotGridOverlay} />
+        <div className={styles.waveContainer}>
+          <svg
+            className={styles.waveSvg}
+            viewBox="0 0 1440 380"
+            fill="none"
+            preserveAspectRatio="none"
+          >
+            <defs>
+              <linearGradient id="waveGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="var(--wave-grad-1)" />
+                <stop offset="50%" stopColor="var(--wave-grad-2)" />
+                <stop offset="100%" stopColor="var(--wave-grad-3)" />
+              </linearGradient>
+              <linearGradient id="waveGrad2" x1="100%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="var(--wave-grad-2)" />
+                <stop offset="50%" stopColor="var(--wave-grad-1)" />
+                <stop offset="100%" stopColor="var(--wave-grad-3)" />
+              </linearGradient>
+              <linearGradient id="waveGrad3" x1="0%" y1="50%" x2="100%" y2="50%">
+                <stop offset="0%" stopColor="var(--wave-grad-1)" />
+                <stop offset="100%" stopColor="var(--wave-grad-2)" />
+              </linearGradient>
+              <linearGradient id="waveLineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="var(--wave-line)" stopOpacity="0" />
+                <stop offset="20%" stopColor="var(--wave-line)" stopOpacity="0.8" />
+                <stop offset="80%" stopColor="var(--wave-line)" stopOpacity="0.8" />
+                <stop offset="100%" stopColor="var(--wave-line)" stopOpacity="0" />
+              </linearGradient>
+            </defs>
+
+            {/* Back Wave */}
+            <path
+              className={styles.wavePath1}
+              d="M0,160 C320,90 640,240 960,150 C1200,80 1340,190 1440,160 L1440,380 L0,380 Z"
+              fill="url(#waveGrad1)"
+            />
+
+            {/* Middle Wave */}
+            <path
+              className={styles.wavePath2}
+              d="M0,220 C280,280 580,140 880,220 C1160,290 1320,180 1440,210 L1440,380 L0,380 Z"
+              fill="url(#waveGrad2)"
+            />
+
+            {/* Front Wave with Crest */}
+            <path
+              className={styles.wavePath3}
+              d="M0,270 C360,190 720,310 1080,240 C1260,210 1380,260 1440,270 L1440,380 L0,380 Z"
+              fill="url(#waveGrad3)"
+            />
+            <path
+              className={styles.waveCrest}
+              d="M0,270 C360,190 720,310 1080,240 C1260,210 1380,260 1440,270"
+              stroke="url(#waveLineGrad)"
+              strokeWidth="1.5"
+              fill="none"
+            />
+          </svg>
+        </div>
+      </div>
+
       {/* Hero section */}
       <div className={styles.emptyHero}>
         <div className={styles.emptyIcon}>
-          <svg width="40" height="48" viewBox="0 0 56 64" fill="none">
+          <svg width="38" height="46" viewBox="0 0 56 64" fill="none">
             <rect
               x="1"
               y="1"
               width="54"
               height="62"
-              rx="5"
+              rx="6"
               fill="none"
-              stroke="var(--border)"
+              stroke="var(--border-card)"
               strokeWidth="1.5"
             />
             <rect
@@ -644,20 +711,45 @@ function EmptyState({
               y="1"
               width="54"
               height="62"
-              rx="5"
-              fill="var(--bg-button)"
+              rx="6"
+              fill="var(--accent)"
+              fillOpacity="0.08"
+            />
+            <path d="M36 1v14a2 2 0 002 2h14" stroke="var(--border-card)" strokeWidth="1.5" />
+            <rect
+              x="12"
+              y="26"
+              width="32"
+              height="2"
+              rx="1"
+              fill="var(--accent)"
+              fillOpacity="0.6"
+            />
+            <rect
+              x="12"
+              y="34"
+              width="24"
+              height="2"
+              rx="1"
+              fill="var(--text-secondary)"
+              fillOpacity="0.5"
+            />
+            <rect
+              x="12"
+              y="42"
+              width="18"
+              height="2"
+              rx="1"
+              fill="var(--text-secondary)"
               fillOpacity="0.4"
             />
-            <path d="M36 1v14a2 2 0 002 2h14" stroke="var(--border)" strokeWidth="1.5" />
-            <rect x="12" y="26" width="32" height="2" rx="1" fill="var(--border)" />
-            <rect x="12" y="34" width="24" height="2" rx="1" fill="var(--border)" />
-            <rect x="12" y="42" width="20" height="2" rx="1" fill="var(--border)" />
           </svg>
         </div>
         <h2 className={styles.emptyTitle}>PDF Reader</h2>
         <p className={styles.emptySubtitle}>Fast, minimal, distraction-free</p>
         <button className={styles.emptyBtn} onClick={onOpenFile}>
-          Open PDF
+          <FolderOpen size={15} strokeWidth={2.2} />
+          <span>Open PDF</span>
         </button>
         <p className={styles.emptyHint}>Ctrl+O · Supports up to 10 files</p>
       </div>

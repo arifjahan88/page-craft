@@ -14,10 +14,35 @@
   z-index: 10;
 }
 
-/* ── Home Page Toolbar (blends with page canvas bg, no border) ── */
+/* ── Home Page Toolbar (transparent overlay on top of aesthetic canvas) ── */
 .homeToolbar {
-  background: var(--bg-canvas) !important;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: transparent !important;
   border-bottom: 1px solid transparent !important;
+  box-shadow: none !important;
+  pointer-events: none;
+  z-index: 20;
+}
+
+.homeToolbar > * {
+  pointer-events: auto;
+}
+
+.homeToolbar .themeBtn {
+  background: var(--bg-card-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-card);
+  box-shadow: 0 2px 8px var(--shadow-sm);
+}
+
+.homeToolbar .themeBtn:hover {
+  background: var(--bg-button-hover);
+  border-color: var(--accent);
+  color: var(--text-primary);
 }
 
 /* ── Sections ── */
