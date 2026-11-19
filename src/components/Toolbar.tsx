@@ -17,6 +17,7 @@ import {
   Loader,
   Printer,
   Download,
+  ImagePlus,
 } from "lucide-react";
 import { useTheme } from "../hooks/useTheme";
 import type { SearchState } from "../hooks/usePDF";
@@ -34,6 +35,7 @@ interface ToolbarProps {
   searchState: SearchState;
   onGoHome: () => void;
   onOpenFile: () => void;
+  onOpenMakePDF: () => void;
   onPrevPage: () => void;
   onNextPage: () => void;
   onGoToPage: (page: number) => void;
@@ -63,6 +65,7 @@ export function Toolbar({
   searchState,
   onGoHome,
   onOpenFile,
+  onOpenMakePDF,
   onPrevPage,
   onNextPage,
   onGoToPage,
@@ -195,6 +198,10 @@ export function Toolbar({
             <button className={styles.openBtn} onClick={onOpenFile} title="Open PDF (Ctrl+O)">
               <FolderOpen size={15} strokeWidth={2} />
               <span className={styles.btnLabel}>Open</span>
+            </button>
+            <button className={styles.openBtn} onClick={onOpenMakePDF} title="Make PDF from images">
+              <ImagePlus size={15} strokeWidth={2} />
+              <span className={styles.btnLabel}>Make PDF</span>
             </button>
             <span className={styles.fileName} title={fileName}>
               {displayName}

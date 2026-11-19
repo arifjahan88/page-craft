@@ -2,7 +2,7 @@ import { useRef, useCallback, useEffect, useState } from "react";
 import React from "react";
 import { ThemeProvider } from "./hooks/useTheme";
 import { usePDF } from "./hooks/usePDF";
-import { useRecents } from "./hooks/useRecents";
+import { useRecents, type RecentFile } from "./hooks/useRecents";
 import { useTabs } from "./hooks/useTabs";
 import { Toolbar } from "./components/Toolbar";
 import { TabBar } from "./components/TabBar";
@@ -10,6 +10,7 @@ import { PDFViewer } from "./components/PDFViewer";
 import { StatusBar } from "./components/StatusBar";
 import { ExtractionProgressModal } from "./components/ExtractionProgressModal";
 import { PrintProgressModal } from "./components/PrintProgressModal";
+import { MakePDFModal } from "./components/MakePDFModal";
 import {
   savePDFBuffer,
   getPDFBuffer,
@@ -60,6 +61,11 @@ function PDFApp({ initialFiles, initialFilePath }: PDFAppProps) {
   const abortControllerRef = useRef<AbortController | null>(null);
   const [printProgress, setPrintProgress] = useState<PrintProgress | null>(null);
   const printAbortControllerRef = useRef<AbortController | null>(null);
+  const [isMakePDFOpen, setIsMakePDFOpen] = useState(false);
+  const [makePDFDroppedPaths, setMakePDFDroppedPaths] = useState<string[] | null>(null);
+  const [isMakePDFExternalDragOver, setIsMakePDFExternalDragOver] = useState(false);
+  const isMakePDFOpenRef = useRef(false);
+  isMakePDFOpenRef.current = isMakePDFOpen;
 
   // ── Hooks ──────────────────────────────────────────────────────────────────
   const {
@@ -85,7 +91,14 @@ function PDFApp({ initialFiles, initialFilePath }: PDFAppProps) {
     goToPrevMatch,
   } = usePDF(canvasRef, textLayerRef);
 
-  const { recents, addRecent, updateRecentPage, removeRecent, clearAllRecents } = useRecents();
+  const {
+    recents,
+    addRecent,
+    updateRecentPage,
+    removeRecent,
+    removeMultipleRecents,
+    clearAllRecents,
+  } = useRecents();
   const { tabs, activeId, openTab, activateTab, closeTab, closeAllTabs, saveTabState } = useTabs();
 
   // ── Go Home: close all open files/tabs and return to home screen ─────────
@@ -318,6 +331,21 @@ function PDFApp({ initialFiles, initialFilePath }: PDFAppProps) {
         const { getCurrentWebview } = await import("@tauri-apps/api/webview");
         unlistenDrop = await getCurrentWebview().onDragDropEvent(async (event) => {
           if (!isMounted) return;
+          if (isMakePDFOpenRef.current) {
+            if (event.payload.type === "enter" || event.payload.type === "over") {
+              setIsMakePDFExternalDragOver(true);
+            } else if (event.payload.type === "leave") {
+              setIsMakePDFExternalDragOver(false);
+            } else if (event.payload.type === "drop") {
+              setIsMakePDFExternalDragOver(false);
+              const paths = event.payload.paths || [];
+              if (paths.length > 0) {
+                setMakePDFDroppedPaths(paths);
+              }
+            }
+            return;
+          }
+
           if (event.payload.type === "enter" || event.payload.type === "over") {
             setIsDraggingOver(true);
           } else if (event.payload.type === "leave") {
@@ -390,6 +418,7 @@ function PDFApp({ initialFiles, initialFilePath }: PDFAppProps) {
 
   // ── Drag & Drop file handling (up to 10 files) ──────────────────────────────
   const handleDragOver = useCallback((e: React.DragEvent) => {
+    if (isMakePDFOpenRef.current) return;
     e.preventDefault();
     e.stopPropagation();
     if (e.dataTransfer.types.includes("Files")) {
@@ -398,6 +427,7 @@ function PDFApp({ initialFiles, initialFilePath }: PDFAppProps) {
   }, []);
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
+    if (isMakePDFOpenRef.current) return;
     e.preventDefault();
     e.stopPropagation();
     if (e.currentTarget.contains(e.relatedTarget as Node)) return;
@@ -406,6 +436,7 @@ function PDFApp({ initialFiles, initialFilePath }: PDFAppProps) {
 
   const handleDrop = useCallback(
     async (e: React.DragEvent) => {
+      if (isMakePDFOpenRef.current) return;
       e.preventDefault();
       e.stopPropagation();
       setIsDraggingOver(false);
@@ -424,6 +455,31 @@ function PDFApp({ initialFiles, initialFilePath }: PDFAppProps) {
         }))
       );
       await loadMultipleBuffers(items);
+    },
+    [loadMultipleBuffers]
+  );
+
+  // ── Make PDF modal handlers ────────────────────────────────────────────────
+  const handleOpenMakePDF = useCallback(() => {
+    setIsDraggingOver(false);
+    setMakePDFDroppedPaths(null);
+    setIsMakePDFExternalDragOver(false);
+    setIsMakePDFOpen(true);
+  }, []);
+
+  const handleCloseMakePDF = useCallback(() => {
+    setIsMakePDFOpen(false);
+    setMakePDFDroppedPaths(null);
+    setIsMakePDFExternalDragOver(false);
+  }, []);
+
+  const handleConsumeMakePDFPaths = useCallback(() => {
+    setMakePDFDroppedPaths(null);
+  }, []);
+
+  const handleOpenGeneratedPDF = useCallback(
+    async (buffer: ArrayBuffer, fileName: string, filePath: string) => {
+      await loadMultipleBuffers([{ buffer, fileName, filePath }]);
     },
     [loadMultipleBuffers]
   );
@@ -461,6 +517,65 @@ function PDFApp({ initialFiles, initialFilePath }: PDFAppProps) {
       deletePDFBuffer(fileName);
     },
     [removeRecent]
+  );
+
+  // ── Re-open multiple files from recents ───────────────────────────────────
+  const handleOpenMultipleRecents = useCallback(
+    async (selectedRecents: RecentFile[]) => {
+      if (selectedRecents.length === 0) return;
+      setPendingFile(true);
+      try {
+        const items: Array<{
+          buffer: ArrayBuffer;
+          fileName: string;
+          filePath: string;
+        }> = [];
+        for (const r of selectedRecents.slice(0, 10)) {
+          let buffer: ArrayBuffer | null = null;
+          if (IS_TAURI && r.filePath) {
+            try {
+              const { invoke } = await import("@tauri-apps/api/core");
+              const base64 = await invoke<string>("read_pdf_file", {
+                path: r.filePath,
+              });
+              buffer = base64ToBuffer(base64);
+            } catch (err) {
+              console.warn(`Could not read ${r.filePath} from disk:`, err);
+            }
+          }
+          if (!buffer) {
+            buffer = await getPDFBuffer(r.fileName);
+          }
+          if (buffer) {
+            items.push({
+              buffer,
+              fileName: r.fileName,
+              filePath: r.filePath,
+            });
+          }
+        }
+
+        if (items.length > 0) {
+          await loadMultipleBuffers(items);
+        }
+      } catch (err) {
+        console.error("Failed to open multiple recents:", err);
+      } finally {
+        setPendingFile(false);
+      }
+    },
+    [loadMultipleBuffers]
+  );
+
+  // ── Remove multiple files from recents ────────────────────────────────────
+  const handleRemoveMultipleRecents = useCallback(
+    (fileNames: string[]) => {
+      removeMultipleRecents(fileNames);
+      for (const name of fileNames) {
+        deletePDFBuffer(name);
+      }
+    },
+    [removeMultipleRecents]
   );
 
   // ── Switch to an existing tab ──────────────────────────────────────────────
@@ -507,6 +622,7 @@ function PDFApp({ initialFiles, initialFilePath }: PDFAppProps) {
   // ── Global keyboard shortcuts ──────────────────────────────────────────────
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (isMakePDFOpenRef.current) return;
       const ctrl = e.ctrlKey || e.metaKey;
       if (e.target instanceof HTMLInputElement) return;
 
@@ -577,6 +693,7 @@ function PDFApp({ initialFiles, initialFilePath }: PDFAppProps) {
         searchState={searchState}
         onGoHome={handleGoHome}
         onOpenFile={handleOpenFile}
+        onOpenMakePDF={handleOpenMakePDF}
         onPrevPage={prevPage}
         onNextPage={nextPage}
         onGoToPage={goToPage}
@@ -622,11 +739,14 @@ function PDFApp({ initialFiles, initialFilePath }: PDFAppProps) {
         onZoomOut={zoomOut}
         onZoomSet={setZoom}
         onOpenFile={handleOpenFile}
+        onOpenMakePDF={handleOpenMakePDF}
         onNextPage={nextPage}
         onPrevPage={prevPage}
         recents={recents}
         onOpenRecent={handleOpenRecent}
+        onOpenMultipleRecents={handleOpenMultipleRecents}
         onRemoveRecent={handleRemoveRecent}
+        onRemoveMultipleRecents={handleRemoveMultipleRecents}
         onClearAllRecents={handleClearAllRecents}
       />
 
@@ -651,6 +771,16 @@ function PDFApp({ initialFiles, initialFilePath }: PDFAppProps) {
           progress={printProgress}
           onCancel={handleCancelPrint}
           onClose={handleClosePrintModal}
+        />
+      )}
+
+      {isMakePDFOpen && (
+        <MakePDFModal
+          onClose={handleCloseMakePDF}
+          onOpenGeneratedPDF={handleOpenGeneratedPDF}
+          externalDroppedPaths={makePDFDroppedPaths}
+          onExternalPathsConsumed={handleConsumeMakePDFPaths}
+          isExternalFileDragOver={isMakePDFExternalDragOver}
         />
       )}
     </div>

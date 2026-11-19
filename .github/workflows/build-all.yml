@@ -6,7 +6,7 @@ on:
       version:
         description: "Release Version"
         required: false
-        default: "v1.0.0"
+        default: "v1.0.1"
 
 permissions:
   contents: write
@@ -77,9 +77,19 @@ jobs:
         with:
           workspaces: "./src-tauri -> target"
 
+      # Synchronize version across config files matching the release tag or input
+      - name: Synchronize version from tag / input
+        shell: bash
+        run: |
+          RAW_VERSION="${{ inputs.version || github.ref_name || 'v1.0.1' }}"
+          CLEAN_VERSION="${RAW_VERSION#refs/tags/}"
+          CLEAN_VERSION="${CLEAN_VERSION#v}"
+          echo "Building PageCraft version: $CLEAN_VERSION (tag: $RAW_VERSION)"
+          node scripts/bump-version.js "$CLEAN_VERSION"
+
       # Frontend dependencies
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: yarn install
 
       # macOS ad-hoc signing for initial unsigned releases
       - name: Set macOS signing identity
@@ -92,15 +102,23 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ inputs.version || 'v1.0.0' }}
-          releaseName: "PageCraft ${{ inputs.version || 'v1.0.0' }}"
+          tagName: ${{ inputs.version || github.ref_name || 'v1.0.1' }}
+          releaseName: "PageCraft ${{ inputs.version || github.ref_name || 'v1.0.1' }}"
           releaseBody: |
-            ## PageCraft Desktop Release (${{ inputs.version || 'v1.0.0' }})
+            ## PageCraft Desktop Release (${{ inputs.version || github.ref_name || 'v1.0.1' }})
 
             Download the installer for your operating system:
             - **macOS**: `.dmg` (Apple Silicon or Intel)
-            - **Windows**: `.exe` / `.msi`
+            - **Windows**: `.exe` (NSIS setup) / `.msi`
             - **Linux**: `.AppImage` / `.deb`
+
+            ---
+
+            ### 🛡️ Windows SmartScreen Note
+            PageCraft is an open-source, community-driven desktop reader without a commercial code-signing certificate. On first launch, Windows Defender SmartScreen may display an *"Unrecognized app"* warning:
+            1. Click **More info**
+            2. Click **Run anyway**
+            *(Alternatively, right-click the `.exe` installer → **Properties** → check **Unblock** → click **OK**).*
 
           releaseDraft: true
           prerelease: false
