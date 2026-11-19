@@ -6,7 +6,7 @@ on:
       version:
         description: "Release Version"
         required: false
-        default: "v1.0.0"
+        default: "v1.0.1"
 
 permissions:
   contents: write
@@ -81,7 +81,7 @@ jobs:
       - name: Synchronize version from tag / input
         shell: bash
         run: |
-          RAW_VERSION="${{ inputs.version || github.ref_name || 'v1.0.0' }}"
+          RAW_VERSION="${{ inputs.version || github.ref_name || 'v1.0.1' }}"
           CLEAN_VERSION="${RAW_VERSION#refs/tags/}"
           CLEAN_VERSION="${CLEAN_VERSION#v}"
           echo "Building PageCraft version: $CLEAN_VERSION (tag: $RAW_VERSION)"
@@ -102,10 +102,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ inputs.version || github.ref_name || 'v1.0.0' }}
-          releaseName: "PageCraft ${{ inputs.version || github.ref_name || 'v1.0.0' }}"
+          tagName: ${{ inputs.version || github.ref_name || 'v1.0.1' }}
+          releaseName: "PageCraft ${{ inputs.version || github.ref_name || 'v1.0.1' }}"
           releaseBody: |
-            ## PageCraft Desktop Release (${{ inputs.version || github.ref_name || 'v1.0.0' }})
+            ## PageCraft Desktop Release (${{ inputs.version || github.ref_name || 'v1.0.1' }})
 
             Download the installer for your operating system:
             - **macOS**: `.dmg` (Apple Silicon or Intel)

@@ -14,7 +14,7 @@ if (platform === "darwin") {
     console.log("\n✅ macOS build completed successfully!");
     console.log("📂 Output location:");
     console.log("   • .app: src-tauri/target/release/bundle/macos/PageCraft.app");
-    console.log("   • .dmg: src-tauri/target/release/bundle/dmg/PageCraft_1.0.0_aarch64.dmg\n");
+    console.log("   • .dmg: src-tauri/target/release/bundle/dmg/PageCraft_1.0.1_aarch64.dmg\n");
   } catch (err) {
     console.error("\n❌ macOS build failed:", err.message);
     process.exit(1);

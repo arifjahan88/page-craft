@@ -14,10 +14,11 @@
 
 <p align="center">
   <strong>PageCraft</strong> is an ultra-fast, minimal, and beautiful document reader built with <strong>Tauri v2</strong>, <strong>React 18</strong>, and <strong>PDF.js</strong>.<br />
-  Engineered for distraction-free reading with smooth continuous scrolling, multi-tab workflows, in-app vector printing, and page-to-image extraction.
+  Engineered for distraction-free reading with smooth continuous scrolling, multi-tab workflows, images-to-PDF creation, cross-platform printing, and page-to-image extraction.
 </p>
 
 <p align="center">
+  <a href="#-whats-new-in-v101">What's New in v1.0.1</a> •
   <a href="#-key-features">Key Features</a> •
   <a href="#-quick-start">Quick Start</a> •
   <a href="#-keyboard-shortcuts">Shortcuts</a> •
@@ -27,7 +28,40 @@
 
 ---
 
+## 🆕 What's New in v1.0.1
+
+Upgrades and fixes from `v1.0.0` → `v1.0.1`:
+
+### ✨ New Features
+- **🖼️ Make PDF from Images**: Convert `JPG`, `JPEG`, `PNG`, and `WebP` images into a single downloadable PDF directly inside PageCraft (accessible beside **Open PDF** on the home screen and beside **Open** in the top toolbar).
+  - Supports uploading up to **20 images per batch** (with strict validation if more than 20 are selected at once) and **500 KB per image**, with unlimited batch additions.
+  - Smooth 60fps pointer-event **drag-and-drop card sorting** powered by `@dnd-kit` (works natively across macOS WKWebView, Windows WebView2, Linux WebKitGTK, and all browsers).
+  - Zero-dependency **PDF 1.4 binary generator** with automatic EXIF orientation handling, white background compositing for transparent PNG/WebP images, **Fit Image** & **A4** page sizing, clean `.pdf` filename validation, native OS Save dialog, and one-click **Open in PageCraft**.
+- **📂 Multi-Select Recent Documents & Confirmation Modals**:
+  - Open all recent documents at once with **Open All**, or multi-select specific cards via checkboxes, `Ctrl / ⌘ + Click`, or `Shift + Click` (with `Enter` to open selected and `Esc` to cancel).
+  - Batch-remove selected documents or clear all recents safely behind a themed **Confirmation Modal** (`ConfirmModal`).
+- **🔗 Native OS PDF File Associations & Multi-File Launch (Windows, Linux & macOS)**:
+  - Registered `.pdf` file associations so you can double-click or right-click → **"Open With PageCraft"** on one or multiple PDF files simultaneously.
+  - Added single-instance forwarding (`tauri-plugin-single-instance`) on Windows & Linux so launching additional PDFs opens them cleanly as tabs in the running window instead of spawning conflicting processes.
+  - Added native Tauri webview drag-and-drop handling (`onDragDropEvent`) so dragging multiple files from Windows Explorer, Linux file managers, or macOS Finder works reliably.
+- **🏷️ Automated Tag-Wise Releases & 1-Command Version Bumping**:
+  - Added `yarn bump <version>` (`scripts/bump-version.js`) to synchronize versions across `package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, and `README.md`.
+  - GitHub Actions automatically synchronizes version metadata from the release tag so every installer filename matches the release tag.
+
+### 🐛 Bug Fixes & Polish
+- **🖨️ Windows & Linux Desktop Printing Fix**: Replaced broken `cmd /C start /P` and `lpr` print invocations with a reliable 150 DPI `pdf.js` `@media print` pipeline and **Print Progress Modal** (`PrintProgressModal`) so native print dialogs open properly on Windows (WebView2) and Linux (WebKitGTK), while preserving native `PDFKit` vector sheets on macOS.
+- **🌊 Background Wave Clipping Fix**: Extended SVG wave paths (`X = -300` to `1740`, `Y = 450`) and set `overflow: visible` on the SVG so animated floating waves never expose vertical cut-off edges on wide screens.
+- **🛡️ Windows Installer Metadata & SmartScreen Guidance**: Added official publisher (`PageCraft Team`), copyright, and NSIS `currentUser` installer metadata in `tauri.conf.json`, plus clear Windows SmartScreen installation steps in `README.md` and release notes.
+
+---
+
 ## ✨ Key Features
+
+### 🖼️ Make PDF from Images
+- Combine `JPG`, `JPEG`, `PNG`, and `WebP` images into a single `.pdf` document completely offline — zero external uploads.
+- Strict batch upload validation (**up to 20 images per upload**, **max 500 KB per image**) with clear inline warnings for invalid formats or oversized files.
+- **60fps Drag-and-Drop Sorting**: Reorder pages visually in a responsive grid powered by `@dnd-kit` with live page badges (`1..N`) and lifted drag overlay.
+- Choose between **Fit Image** (exact aspect ratio) or **A4** (auto-oriented portrait/landscape with margins), enter a clean filename (`.pdf` suffix attached automatically), and save via native OS dialog or browser download.
 
 ### 📑 Multi-Tab Workspace
 - Open and manage up to **10 PDF documents simultaneously** with an intuitive, native-feeling tab bar.
@@ -39,10 +73,11 @@
 - Frosted glassmorphism (`backdrop-filter: blur`) cards with anti-aliased border radii.
 - Seamless **Dark** and **Light** themes with smooth color transitions and persistent state.
 
-### 🖨️ High-Fidelity In-App Native Print Dialog
-- Prints documents with **100% original vector sharpness**, exact typography, and paper geometries.
-- **Desktop (macOS)**: Integrates directly with native `PDFKit` and `AppKit` (`NSPrintOperation`), sliding down the native macOS print sheet right inside the window without opening external preview applications.
-- **Web**: Uses an isolated, offscreen streaming `<iframe>` print pipeline with automatic memory cleanup.
+### 🖨️ High-Fidelity Cross-Platform Print Dialog
+- Prints documents directly from inside the app across all operating systems:
+  - **Desktop (macOS)**: Integrates directly with native `PDFKit` and `AppKit` (`NSPrintOperation`), sliding down the native macOS vector print sheet inside the window.
+  - **Desktop (Windows & Linux)**: Renders pages at high-DPI (150 DPI) via `pdf.js` into an isolated `@media print` layer with an interactive **Print Progress Modal** and cancellation support, opening the native Windows / Linux print dialog reliably.
+  - **Web**: Uses an isolated, offscreen streaming `<iframe>` print pipeline with automatic memory cleanup.
 
 ### 📦 Multi-Format Page Extraction (ZIP Download)
 - Extract every page of any PDF into crisp image files:
@@ -63,10 +98,11 @@
 - Automatic viewport page tracking synchronized with the toolbar indicator and thumbnail navigation.
 - Low-memory footprint: pages outside the preload threshold are cleanly de-allocated.
 
-### 🕒 Persistent Recent Documents
+### 🕒 Persistent Recent Documents (Multi-Select & Batch Open)
 - Card-based home screen grid displaying previously opened files with last-read page badges (`Page X of Y`).
+- **One-Click "Open All"** & **Multi-Select Mode**: Hover checkboxes, `Ctrl / ⌘ + Click`, or `Shift + Click` to select multiple recent files and open or remove them in a batch.
+- Safe **Confirmation Modal** before removing individual/selected files or clearing all recent history and cache.
 - Backed by **IndexedDB** binary buffer storage for instant re-opening even in browser mode.
-- Clear individual files or wipe all document history and cache in one click.
 
 ---
 
@@ -224,33 +260,38 @@ pagecraft/
 │   └── site.webmanifest            # Web manifest configuration
 ├── scripts/
 │   ├── build.js                    # Cross-platform desktop build runner
+│   ├── bump-version.js             # 1-command version synchronizer (yarn bump)
 │   └── generate-banner.js          # SVG-to-PNG hero banner generator
 ├── src-tauri/                      # Rust / Tauri desktop core
 │   ├── capabilities/
 │   │   └── default.json            # Security capability scopes (dialog, fs)
 │   ├── icons/                      # Desktop icon bundle (icns, ico, png)
 │   ├── src/
-│   │   ├── main.rs                 # PDFKit native print sheet & FS commands
+│   │   ├── main.rs                 # Single-instance queue, PDFKit print & binary FS commands
 │   │   └── lib.rs                  # Library entrypoint
-│   └── tauri.conf.json             # App metadata, bundle IDs, window specs
+│   └── tauri.conf.json             # App metadata, file associations, NSIS & window specs
 ├── src/                            # React 18 UI layer
 │   ├── components/
+│   │   ├── ConfirmModal.tsx        # Confirmation dialog for remove / clear all actions
 │   │   ├── ExtractionProgressModal.tsx # Page-to-image extraction progress & cancel UI
+│   │   ├── MakePDFModal.tsx        # Images-to-PDF modal with @dnd-kit drag-and-drop sorting
 │   │   ├── PDFViewer.tsx           # Continuous canvas viewer & home screen
+│   │   ├── PrintProgressModal.tsx  # Windows/Linux raster print progress & cancel UI
 │   │   ├── SearchBar.tsx           # Full-text search bar with match counter
 │   │   ├── StatusBar.tsx           # Bottom page metrics & document status
 │   │   ├── TabBar.tsx              # Multi-document tabs with close/add actions
-│   │   └── Toolbar.tsx             # Responsive controls, zoom, print & export menu
+│   │   └── Toolbar.tsx             # Responsive controls, zoom, print, Make PDF & export menu
 │   ├── hooks/
 │   │   ├── usePDF.ts               # Core PDF.js loader & text layer highlight engine
-│   │   ├── useRecents.ts           # Recent document history management
+│   │   ├── useRecents.ts           # Recent document history & batch removal
 │   │   ├── useTabs.ts              # Multi-document tab state & buffer storage
 │   │   └── useTheme.tsx            # Fluid dark/light theme context & persistence
 │   ├── styles/
 │   │   └── globals.css             # Theme tokens, fluid wave animations & reset
 │   ├── utils/
 │   │   ├── pdfExtractor.ts         # High-resolution canvas rendering to image
-│   │   ├── pdfPrinter.ts           # Hybrid native print bridge (Tauri / Web)
+│   │   ├── pdfMaker.ts             # Zero-dependency PDF 1.4 generator from images
+│   │   ├── pdfPrinter.ts           # Hybrid native print bridge (macOS / Win / Linux / Web)
 │   │   ├── pdfStorage.ts           # IndexedDB binary buffer persistence
 │   │   └── zipWriter.ts            # Zero-dependency in-memory PKZip 2.0 generator
 │   ├── App.tsx                     # Top-level coordinator & keyboard handlers
