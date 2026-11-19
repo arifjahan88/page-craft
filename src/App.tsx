@@ -10,6 +10,7 @@ import { PDFViewer } from "./components/PDFViewer";
 import { StatusBar } from "./components/StatusBar";
 import { ExtractionProgressModal } from "./components/ExtractionProgressModal";
 import { PrintProgressModal } from "./components/PrintProgressModal";
+import { MakePDFModal } from "./components/MakePDFModal";
 import {
   savePDFBuffer,
   getPDFBuffer,
@@ -60,6 +61,11 @@ function PDFApp({ initialFiles, initialFilePath }: PDFAppProps) {
   const abortControllerRef = useRef<AbortController | null>(null);
   const [printProgress, setPrintProgress] = useState<PrintProgress | null>(null);
   const printAbortControllerRef = useRef<AbortController | null>(null);
+  const [isMakePDFOpen, setIsMakePDFOpen] = useState(false);
+  const [makePDFDroppedPaths, setMakePDFDroppedPaths] = useState<string[] | null>(null);
+  const [isMakePDFExternalDragOver, setIsMakePDFExternalDragOver] = useState(false);
+  const isMakePDFOpenRef = useRef(false);
+  isMakePDFOpenRef.current = isMakePDFOpen;
 
   // ── Hooks ──────────────────────────────────────────────────────────────────
   const {
@@ -325,6 +331,21 @@ function PDFApp({ initialFiles, initialFilePath }: PDFAppProps) {
         const { getCurrentWebview } = await import("@tauri-apps/api/webview");
         unlistenDrop = await getCurrentWebview().onDragDropEvent(async (event) => {
           if (!isMounted) return;
+          if (isMakePDFOpenRef.current) {
+            if (event.payload.type === "enter" || event.payload.type === "over") {
+              setIsMakePDFExternalDragOver(true);
+            } else if (event.payload.type === "leave") {
+              setIsMakePDFExternalDragOver(false);
+            } else if (event.payload.type === "drop") {
+              setIsMakePDFExternalDragOver(false);
+              const paths = event.payload.paths || [];
+              if (paths.length > 0) {
+                setMakePDFDroppedPaths(paths);
+              }
+            }
+            return;
+          }
+
           if (event.payload.type === "enter" || event.payload.type === "over") {
             setIsDraggingOver(true);
           } else if (event.payload.type === "leave") {
@@ -397,6 +418,7 @@ function PDFApp({ initialFiles, initialFilePath }: PDFAppProps) {
 
   // ── Drag & Drop file handling (up to 10 files) ──────────────────────────────
   const handleDragOver = useCallback((e: React.DragEvent) => {
+    if (isMakePDFOpenRef.current) return;
     e.preventDefault();
     e.stopPropagation();
     if (e.dataTransfer.types.includes("Files")) {
@@ -405,6 +427,7 @@ function PDFApp({ initialFiles, initialFilePath }: PDFAppProps) {
   }, []);
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
+    if (isMakePDFOpenRef.current) return;
     e.preventDefault();
     e.stopPropagation();
     if (e.currentTarget.contains(e.relatedTarget as Node)) return;
@@ -413,6 +436,7 @@ function PDFApp({ initialFiles, initialFilePath }: PDFAppProps) {
 
   const handleDrop = useCallback(
     async (e: React.DragEvent) => {
+      if (isMakePDFOpenRef.current) return;
       e.preventDefault();
       e.stopPropagation();
       setIsDraggingOver(false);
@@ -431,6 +455,31 @@ function PDFApp({ initialFiles, initialFilePath }: PDFAppProps) {
         }))
       );
       await loadMultipleBuffers(items);
+    },
+    [loadMultipleBuffers]
+  );
+
+  // ── Make PDF modal handlers ────────────────────────────────────────────────
+  const handleOpenMakePDF = useCallback(() => {
+    setIsDraggingOver(false);
+    setMakePDFDroppedPaths(null);
+    setIsMakePDFExternalDragOver(false);
+    setIsMakePDFOpen(true);
+  }, []);
+
+  const handleCloseMakePDF = useCallback(() => {
+    setIsMakePDFOpen(false);
+    setMakePDFDroppedPaths(null);
+    setIsMakePDFExternalDragOver(false);
+  }, []);
+
+  const handleConsumeMakePDFPaths = useCallback(() => {
+    setMakePDFDroppedPaths(null);
+  }, []);
+
+  const handleOpenGeneratedPDF = useCallback(
+    async (buffer: ArrayBuffer, fileName: string, filePath: string) => {
+      await loadMultipleBuffers([{ buffer, fileName, filePath }]);
     },
     [loadMultipleBuffers]
   );
@@ -573,6 +622,7 @@ function PDFApp({ initialFiles, initialFilePath }: PDFAppProps) {
   // ── Global keyboard shortcuts ──────────────────────────────────────────────
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (isMakePDFOpenRef.current) return;
       const ctrl = e.ctrlKey || e.metaKey;
       if (e.target instanceof HTMLInputElement) return;
 
@@ -643,6 +693,7 @@ function PDFApp({ initialFiles, initialFilePath }: PDFAppProps) {
         searchState={searchState}
         onGoHome={handleGoHome}
         onOpenFile={handleOpenFile}
+        onOpenMakePDF={handleOpenMakePDF}
         onPrevPage={prevPage}
         onNextPage={nextPage}
         onGoToPage={goToPage}
@@ -688,6 +739,7 @@ function PDFApp({ initialFiles, initialFilePath }: PDFAppProps) {
         onZoomOut={zoomOut}
         onZoomSet={setZoom}
         onOpenFile={handleOpenFile}
+        onOpenMakePDF={handleOpenMakePDF}
         onNextPage={nextPage}
         onPrevPage={prevPage}
         recents={recents}
@@ -719,6 +771,16 @@ function PDFApp({ initialFiles, initialFilePath }: PDFAppProps) {
           progress={printProgress}
           onCancel={handleCancelPrint}
           onClose={handleClosePrintModal}
+        />
+      )}
+
+      {isMakePDFOpen && (
+        <MakePDFModal
+          onClose={handleCloseMakePDF}
+          onOpenGeneratedPDF={handleOpenGeneratedPDF}
+          externalDroppedPaths={makePDFDroppedPaths}
+          onExternalPathsConsumed={handleConsumeMakePDFPaths}
+          isExternalFileDragOver={isMakePDFExternalDragOver}
         />
       )}
     </div>

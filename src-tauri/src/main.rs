@@ -167,6 +167,7 @@ fn main() {
         })
         .invoke_handler(tauri::generate_handler![
             read_pdf_file,
+            read_binary_file,
             take_pending_files,
             show_window,
             write_binary_file,
@@ -199,6 +200,13 @@ fn take_pending_files(state: tauri::State<PendingFiles>) -> Vec<String> {
 /// Read a PDF file from disk and return its bytes as base64
 #[tauri::command]
 async fn read_pdf_file(path: String) -> Result<String, String> {
+    let bytes = std::fs::read(&path).map_err(|e| e.to_string())?;
+    Ok(base64_encode(&bytes))
+}
+
+/// Read any local binary file (e.g. images for Make PDF) and return its bytes as base64
+#[tauri::command]
+async fn read_binary_file(path: String) -> Result<String, String> {
     let bytes = std::fs::read(&path).map_err(|e| e.to_string())?;
     Ok(base64_encode(&bytes))
 }

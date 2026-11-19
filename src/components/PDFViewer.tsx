@@ -2,7 +2,15 @@ import { useRef, useEffect, useCallback, useState, forwardRef, type MutableRefOb
 import * as pdfjsLib from "pdfjs-dist";
 import { type RecentFile } from "../hooks/useRecents";
 import { applyHighlights } from "../hooks/usePDF";
-import { UploadCloud, FileText, FolderOpen, Check, CheckSquare, Trash2 } from "lucide-react";
+import {
+  UploadCloud,
+  FileText,
+  FolderOpen,
+  ImagePlus,
+  Check,
+  CheckSquare,
+  Trash2,
+} from "lucide-react";
 import { ConfirmModal } from "./ConfirmModal";
 import styles from "./PDFViewer.module.css";
 
@@ -24,6 +32,7 @@ interface PDFViewerProps {
   onZoomOut: () => void;
   onZoomSet: (zoom: number) => void;
   onOpenFile: () => void;
+  onOpenMakePDF: () => void;
   onNextPage: () => void;
   onPrevPage: () => void;
   recents: RecentFile[];
@@ -53,6 +62,7 @@ export const PDFViewer = forwardRef<HTMLDivElement, PDFViewerProps>(function PDF
     onZoomOut,
     onZoomSet,
     onOpenFile,
+    onOpenMakePDF,
     onNextPage,
     onPrevPage,
     recents,
@@ -342,6 +352,7 @@ export const PDFViewer = forwardRef<HTMLDivElement, PDFViewerProps>(function PDF
         ) : (
           <EmptyState
             onOpenFile={onOpenFile}
+            onOpenMakePDF={onOpenMakePDF}
             recents={recents}
             onOpenRecent={onOpenRecent}
             onOpenMultipleRecents={onOpenMultipleRecents}
@@ -606,6 +617,7 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
 
 function EmptyState({
   onOpenFile,
+  onOpenMakePDF,
   recents,
   onOpenRecent,
   onOpenMultipleRecents,
@@ -614,6 +626,7 @@ function EmptyState({
   onClearAllRecents,
 }: {
   onOpenFile: () => void;
+  onOpenMakePDF: () => void;
   recents: RecentFile[];
   onOpenRecent: (filePath: string, fileName: string) => void;
   onOpenMultipleRecents?: (selected: RecentFile[]) => void;
@@ -868,10 +881,16 @@ function EmptyState({
         </div>
         <h2 className={styles.emptyTitle}>PageCraft</h2>
         <p className={styles.emptySubtitle}>Fast, minimal, distraction-free</p>
-        <button className={styles.emptyBtn} onClick={onOpenFile}>
-          <FolderOpen size={15} strokeWidth={2.2} />
-          <span>Open PDF</span>
-        </button>
+        <div className={styles.emptyActions}>
+          <button className={styles.emptyBtn} onClick={onOpenFile}>
+            <FolderOpen size={15} strokeWidth={2.2} />
+            <span>Open PDF</span>
+          </button>
+          <button className={styles.emptyBtnSecondary} onClick={onOpenMakePDF}>
+            <ImagePlus size={15} strokeWidth={2.2} />
+            <span>Make PDF</span>
+          </button>
+        </div>
         <p className={styles.emptyHint}>Ctrl+O · Supports up to 10 files</p>
       </div>
 
