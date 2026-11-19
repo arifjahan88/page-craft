@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/banner.png" alt="PageCraft - Modern Desktop & Web PDF Reader" width="100%" />
+  <img src="assets/banner.png?v=1.0.1" alt="PageCraft - Modern Desktop & Web PDF Reader" width="100%" />
 </p>
 
 <p align="center">
