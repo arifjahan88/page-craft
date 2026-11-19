@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback, useState, forwardRef, type MutableRefObject } from "react";
+import { useRef, useEffect, useCallback, useState, forwardRef, type ForwardedRef } from "react";
 import * as pdfjsLib from "pdfjs-dist";
 import { type RecentFile } from "../hooks/useRecents";
 import { applyHighlights } from "../hooks/usePDF";
@@ -72,7 +72,7 @@ export const PDFViewer = forwardRef<HTMLDivElement, PDFViewerProps>(function PDF
     onRemoveMultipleRecents,
     onClearAllRecents,
   }: PDFViewerProps,
-  ref: ((node: HTMLDivElement | null) => void) | MutableRefObject<HTMLDivElement | null> | null
+  ref: ForwardedRef<HTMLDivElement>
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
@@ -323,9 +323,9 @@ export const PDFViewer = forwardRef<HTMLDivElement, PDFViewerProps>(function PDF
   return (
     <div
       ref={(node) => {
-        (containerRef as MutableRefObject<HTMLDivElement | null>).current = node;
+        containerRef.current = node;
         if (typeof ref === "function") ref(node);
-        else if (ref) (ref as MutableRefObject<HTMLDivElement | null>).current = node;
+        else if (ref) ref.current = node;
       }}
       className={styles.container}
       onMouseDown={handleMouseDown}

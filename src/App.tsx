@@ -47,8 +47,8 @@ interface PDFAppProps {
 
 function PDFApp({ initialFiles, initialFilePath }: PDFAppProps) {
   // ── Refs ───────────────────────────────────────────────────────────────────
-  const canvasRef = useRef<HTMLCanvasElement>(null) as React.RefObject<HTMLCanvasElement>;
-  const textLayerRef = useRef<HTMLDivElement>(null) as React.RefObject<HTMLDivElement>;
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const textLayerRef = useRef<HTMLDivElement | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const switchingRef = useRef(false); // prevents stale page/zoom writes during tab switch
 

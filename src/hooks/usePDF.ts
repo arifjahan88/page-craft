@@ -126,8 +126,8 @@ function scrollToFirstHighlight(container: HTMLDivElement) {
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
 export function usePDF(
-  canvasRef: React.RefObject<HTMLCanvasElement>,
-  textLayerRef: React.RefObject<HTMLDivElement>
+  canvasRef: React.RefObject<HTMLCanvasElement | null>,
+  textLayerRef: React.RefObject<HTMLDivElement | null>
 ) {
   const [state, setState] = useState<PDFState>(INITIAL_PDF_STATE);
   const [searchState, setSearchState] = useState<SearchState>(INITIAL_SEARCH_STATE);
